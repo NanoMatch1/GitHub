@@ -3,22 +3,6 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-class Scan1D:
-    "this is a 1D linescan class"
-
-    def frameScanArea():
-        pass
-
-
-
-class Scan2D(Scan1D):
-    'This is a 2D map class'
-
-class System():
-    pass
-
-
-
 def send_gcode(code, delay = None):
     if isinstance(code, str):
         print('Sending: ' + str(code))
@@ -69,6 +53,10 @@ def update_pos(currentPos, posData):
     if isinstance(posData, tuple):
         currentPos = (float(currentPos[0])+float(posData[0]), float(currentPos[1])+float(posData[1]))
     print("New position:", str(currentPos))
+    # longAxis = max(abs(posData[0], abs(posData[1])))
+    # travelTime = float(longAxis)*.08
+    # if travelTime <= 1:
+    #     travelTime = 1
     return currentPos
 
 def update_pos_x(currentPos, pos):
@@ -91,7 +79,7 @@ def prep_linescan(start, finish, increment):
     posHome = start
     posFinish
 
-def get_command():
+def get_command(commandList):
     while True:
         command = str(input("Enter command:\n"))
         # if str(command) in commandDict.keys():
@@ -144,12 +132,15 @@ def runLinescan(lineScanList, acquisitionTime):
     quit()
 
 
-def main_loop():
-    currentPos = (0, 0)
-    home = (0, 0)
+def main_loop(s, currentPos, commandDict, commandList):
+    acquireTime = None
 
+    try:
+        home
+    except:
+        home = currentPos
     while True:
-        command, type = get_command()
+        command, type = get_command(commandList)
         if type == "move":
             currentPos = interpret_move(currentPos, command)
             move_absolute(currentPos)
@@ -163,7 +154,7 @@ def main_loop():
                 lineStart, lineFinish = None, None
                 print('Preparing for linescan:')
                 while True:
-                    command, type = get_command()
+                    command, type = get_command(commandList)
                     if type == 'move':
                         currentPos = interpret_move(currentPos, command)
                         move_absolute(currentPos)
@@ -204,38 +195,45 @@ def main_loop():
                 currentPos = interpret_move(currentPos, lineScanList[0])
                 move_absolute(lineScanList[0])
                 input("Press 'Enter' to run linescan. Close console to quit.")
+                break
 
-                runLinescan(lineScanList, acquisitionTime)
-
-
-
-
+    return lineScanList, acquisitionTime
+                # runLinescan(lineScanList, acquisitionTime)
 
 
-acquireTime = None
-# Open grbl serial port
-s = serial.Serial('COM6',115200)
 
-# Wake up grbl
-s.write(str.encode("hello"))
-time.sleep(2)   # Wait for grbl to initialize
-s.flushInput()  # Flush startup text in serial input
 
-# Stream g-code to grbl
-s.write(str.encode('G90 F1000'+'\n'))
-grbl_out = s.readline() # Wait for grbl response with carriage return
-print('Moving in absolute coordinates : ' + str(grbl_out.strip()))
 
-commandDict = {"quit": "quit", "sethome": "sethome"}
-commandList = ['quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire']
-main_loop()
+def initializeGRBL():
+    # Open grbl serial port
+    s = serial.Serial('COM6',115200)
 
-# Wait here until grbl is finished to close serial port and file.
-input("  Press <Enter> to exit and disable grbl.")
+    # Wake up grbl
+    s.write(str.encode("hello"))
+    time.sleep(2)   # Wait for grbl to initialize
+    s.flushInput()  # Flush startup text in serial input
 
-# Close file and serial port
-# f.close()
-s.close()
+    # Stream g-code to grbl
+    s.write(str.encode('G90 F1000'+'\n'))
+    grbl_out = s.readline() # Wait for grbl response with carriage return
+    print('Moving in absolute coordinates : ' + str(grbl_out.strip()))
+
+    commandDict = {"quit": "quit", "sethome": "sethome"}
+    commandList = ['quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire']
+    currentPos = (0,0)
+
+    return s, currentPos, commandDict, commandList
+#
+#
+# s, currentPos, commandDict, commandList = initializeGRBL()
+# main_loop(currentPos, commandDict, commandList)
+#
+# # Wait here until grbl is finished to close serial port and file.
+# input("  Press <Enter> to exit and disable grbl.")
+#
+# # Close file and serial port
+# # f.close()
+# s.close()
 
 
 
