@@ -40,7 +40,7 @@ def move_absolute(pos):
     # send_gcode('G90')
     if isinstance(pos, tuple):
         xPos, yPos = pos
-        send_gcode('G1 X'+str(xPos)+' Y'+str(yPos))
+        send_gcode('G0 X'+str(xPos)+' Y'+str(yPos))
         # currentPos = update_pos(currentPos, pos)
     if isinstance(pos, str):
         if 'x' in pos or 'X' in pos:
