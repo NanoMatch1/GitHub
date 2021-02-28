@@ -199,7 +199,7 @@ def runLinescan(lineScanList, acquisitionTime):
     quit()
 
 
-def main_loop(s, currentPos, commandDict, commandList):
+def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
     acquireTime = None
 
     try:
@@ -214,7 +214,7 @@ def main_loop(s, currentPos, commandDict, commandList):
 
         if type == "command":
             if command == 'filename':
-                baseFilename = str(input("Enter filename:\n"))
+                filename = str(input("Enter filename:\n"))
             if command == 'traveltime':
                 travelTime = input("Enter new travel time for scans in seconds:\n")
             if command == 'sethome':
@@ -266,7 +266,7 @@ def main_loop(s, currentPos, commandDict, commandList):
                 currentPos = interpret_move(currentPos, lineScanList[0])
                 move_absolute(lineScanList[0])
                 input("Press 'Enter' to run linescan. Close console to quit.")
-                return lineScanList, acquisitionTime
+                return lineScanList, acquisitionTime, filename
                 break
 
             if command == 'map':
@@ -277,6 +277,8 @@ def main_loop(s, currentPos, commandDict, commandList):
                     if type == 'move':
                         currentPos = interpret_move(currentPos, command)
                         move_absolute(currentPos)
+                    if command == 'filename':
+                        filename = str(input("Enter filename:\n"))
                     if command == 'start':
                         mapStart = currentPos
                         print("Start position entered:", lineStart)
@@ -302,8 +304,8 @@ def main_loop(s, currentPos, commandDict, commandList):
                     col = []
                     for y in yScan:
                         col.append((x, y))
-                    if (index+1)%2 == 0:
-                        col = col[::-1]
+                    # if (index+1)%2 == 0:
+                    #     col = col[::-1]
                     try:
                         mapList.append(col)
                     except NameError:
@@ -322,8 +324,16 @@ def main_loop(s, currentPos, commandDict, commandList):
                 print("Returning to start position.")
                 currentPos = interpret_move(currentPos, mapList[0])
                 move_absolute(mapList[0])
-                input("Press 'Enter' to run linescan. Close console to quit.")
-                return mapList, acquisitionTime
+                while True:
+                    com3 = input("Press 'Enter' to run linescan. Close console to quit.")
+                    if com3 == 'show':
+                        for x in mapList:
+                            move_absolute(x)
+                            currentPos = x
+                        move_absolute(mapList[0])
+                    else:
+                        break
+                return mapList, acquisitionTime, filename
                 break
 
 
@@ -362,7 +372,7 @@ experiment.ExperimentCompleted += experiment_completed
 
 # exposures = [50, 100]
 # specPositions = [560, 435, 546]
-baseFilename = "f1Linescan"
+filename = "f1Linescan"
 travelTime = 2
 inp = input("Change settings, then press <Enter> to continue")
 
@@ -370,11 +380,12 @@ s, currentPos, commandDict, commandList = initializeGRBL()
 
 
 while True:
-    scanList, acquisitionTime = main_loop(s, currentPos, commandDict, commandList)
+    scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
     experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+    np.savetxt('{}.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
 
     for pos in scanList:
-        name = str(baseFilename)+'#{}'.format(str(pos))
+        name = str(filename)+'#{}'.format(str(pos))
         experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
         print('setting exp params')
         print('Moving to {}'.format(pos))
