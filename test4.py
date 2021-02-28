@@ -1,0 +1,150 @@
+import numpy as np
+import math
+
+start = (-0, -0)
+finish = (-10, 30)
+
+res = 5
+
+def pause():
+    input('Pause')
+
+
+
+def generate_2D_arrays(start, finish, resolution):
+    deltaX = finish[0]-start[0]
+    deltaY = finish[1]-start[1]
+
+    if deltaX > 0:
+        xStep = res
+    if deltaX < 0:
+        xStep = res*-1
+
+    if deltaY > 0:
+        yStep = res
+    if deltaY < 0:
+        yStep = res*-1
+
+    print(xStep)
+    lenX = math.floor(abs(deltaX/xStep))
+    lenY = math.floor(abs(deltaY/yStep))
+
+    xScan = [start[0]+(xStep*index) for index in list(range(lenX+1))]
+    yScan = [start[1]+(yStep*index) for index in list(range(lenY+1))]
+
+    print('xScan:', xScan)
+    print('yScan:', yScan)
+
+    if len(xScan) == 0 or len(yScan)== 0:
+        print('resolution error - please enter appropriate resolution for image size')
+
+    for idx, x in enumerate(xScan):
+        rowX = []
+        rowY = []
+        for y in yScan:
+            rowX.append(x)
+            rowY.append(y)
+
+        try:
+            xArray = np.column_stack((xArray, rowX))
+            yArray = np.column_stack((yArray, rowY))
+        except NameError:
+            xArray = np.array(rowX).astype(float)
+            yArray = np.array(rowY).astype(float)
+
+
+    return xArray, yArray
+
+
+def run_2D_map(xArray, yArray, acquisitionTime):
+    for i in list(range(len(xArray))):
+        for j in list(range(len(yArray))):
+            print(xArray[i, j], yArray[i, j])
+        print('linebreak reset')
+
+
+xArray, yArray = generate_2D_arrays(start, finish, res)
+
+print('X')
+print(xArray[:, 0])
+print('-----------------------------------')
+print(yArray[:, 0])
+# pause()
+for i in list(range(len(xArray[:, 0]))):
+    # print('len xArray', len(xArray)-1)
+    for j in list(range(len(xArray[0, :]))):
+        # print('len yArray', len(yArray)-1)
+        print(xArray[i, j], yArray[i, j])
+    print('linebreak reset')
+# print('start')
+# print(xArray[0,0], yArray[0,0])
+# print('finish')
+# print(xArray[-1, -1], yArray[-1,-1])
+#
+# print(len(xArray[0, :]))
+#
+# mapEndPos = (xArray[-1, -1], yArray[-1, -1])
+#
+# print('mapEnd[0]', mapEndPos[1])
+# print(mapArray[0, 0])
+# val = tuple(mapArray[0, 0])
+# print(val[0])
+# lineScanY = [lineStart[1]+(yInt*index) for index in list(range(lineScanRes))]
+
+
+# print(lenX, lenY)
+# pause()
+
+# xScan = np.arange(start[0], finish[0], res)
+# if xDir == 'pos':
+#     xScan = np.arange(start[0], finish[0], res)
+#
+# elif xDir == 'neg':
+#     xScan = (np.arange(abs(start[0]), abs(finish[0]), res))*-1
+
+# for
+
+# print(xScan)
+
+# xInt = float((finish[0]-start[0])/res)
+# yInt = float((finish[1]-start[1])/res)
+# # print('xInt:yInt', math.floor(xInt), math.floor(yInt))
+#
+# xScan = []
+# yScan = []
+# idx = 1
+# while abs(xInt*idx) < abs(finish[0]):
+#     xScan.append(xInt*idx)
+#     idx += 1
+# idx = 1
+#
+# while abs(yInt*idx) < abs(finish[1]):
+#     yScan.append(yInt*idx)
+#     idx += 1
+#
+#
+# print(xScan, yScan)
+
+
+# # xScan = [start[0]+(xInt*index) for index in list(range(xInt))]
+# print(list(range(math.floor(xInt))))
+# print(list(range(math.floor(yInt))))
+# for x in list(range(math.floor(xInt))):
+#     print(x)
+#     for y in list(range(math.floor(yInt))):
+#         pos = (x, y)
+#         print(x, y)
+#         pause()
+#         try:
+#             row.append(pos)
+#         except NameError:
+#             row = [pos]
+#     try:
+#         mapArray = np.vstack((mapArray, row))
+#     except NameError:
+#         mapArray = np.array(row)
+#
+# print(mapArray)
+# # print(xScan)
+#
+# print(xInt, yInt)

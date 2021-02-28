@@ -296,31 +296,18 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                     if mapStart and mapFinish:
                         break
                 while True:
+                    print('map size is '+str(mapFinish[0]-mapStart[0])+' x '+str(mapFinish[1]-mapStart[1]))
+
                     mapRes = input("Enter scan resolution in microns:\n")
                     try:
-                        lineScanRes = float(mapRes)
+                        resolution = float(mapRes)
                         break
                     except:
-                        print("Number of points not recognised - please enter an interger number.")
-
-                xScan = np.arange(mapStart[0], mapFinish[0], float(mapRes))
-                yScan = np.arange(mapStart[1], mapFinish[1], float(mapRes))
-                print(xScan, yScan)
-                pause()
+                        print("Number not recognised - please enter a number.")
 
 
-                for index, x in enumerate(xScan):
-                    print('in scan')
-                    col = []
-                    for y in yScan:
-                        col.append((x, y))
-                    # if (index+1)%2 == 0:
-                    #     col = col[::-1]
-                    try:
-                        mapList.append(col)
-                    except NameError:
-                        mapList = col
-                print('out of scan')
+                xArray, yArray = generate_2D_arrays(mapStart, mapFinish, resolution)
+
                 while True:
                     acquisitionTime = input("Enter acquisition time per frame (seconds):\n")
                     try:
@@ -329,25 +316,32 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                     except:
                         print("Acquisition time value not recognised. Please enter an number.")
 
+
+
                 print("Map ready:")
-                print(mapList)
+                runTime = len(xArray[:, 0])*len(xArray[0, :])*acquisitionTime
+                # print("Calculated run time:"
                 print("Returning to start position.")
-                currentPos = interpret_move(currentPos, mapList[0])
-                move_absolute(mapList[0])
+                mapHome = (xArray[0, 0], yArray[0, 0])
+                mapEndPos = (xArray[-1, -1], yArray[-1, -1])
+                currentPos = interpret_move(currentPos, mapHome)
+                move_absolute(mapHome)
 
-                filename = filename+r' #{}x{}#{}s#({},{})#'.format(len(xScan), len(yScan), acquisitionTime, str(pos[0]), str(pos[1]))
-
+                filename = filename+r' #{}x{}#{}s#'.format(len(xArray[0, :]), len(yArray[0, :]), acquisitionTime)
+                print('Estimated run time: {} sec, or \n{} min, or \n{} hours'.format(runTime, runTime/60, runTime/360))
                 while True:
                     com3 = input("Press 'Enter' to run linescan. Close console to quit.")
                     if com3 == 'show':
-                        for x in mapList:
-                            move_absolute(x)
-                            currentPos = x
-                        move_absolute(mapList[0])
+                            move_absolute(mapHome)
+                            move_absolute(mapEndPos[0], mapHome[0])
+                            move_absolute(mapEndPos)
+                            move_absolute(mapHome[0], mapEndPos[1])
+                            move_absolute(mapHome)
+
                     else:
                         break
-                return mapList, acquisitionTime, filename
-                break
+                return xArray, yArray, acquisitionTime, filename
+
 
 
 
@@ -371,21 +365,70 @@ def initializeGRBL():
 
     return s, currentPos, commandDict, commandList
 
+def generate_2D_arrays(start, finish, resolution):
+    import math
+
+    deltaX = finish[0]-start[0]
+    deltaY = finish[1]-start[1]
+
+    if deltaX > 0:
+        xStep = resolution
+    if deltaX < 0:
+        xStep = resolution*-1
+
+    if deltaY > 0:
+        yStep = resolution
+    if deltaY < 0:
+        yStep = resolution*-1
+
+    print(xStep)
+    lenX = math.floor(abs(deltaX/xStep))
+    lenY = math.floor(abs(deltaY/yStep))
+
+    xScan = [start[0]+(xStep*index) for index in list(range(lenX+1))]
+    yScan = [start[1]+(yStep*index) for index in list(range(lenY+1))]
+
+    print('xScan:', xScan)
+    print('yScan:', yScan)
+
+    if len(xScan) == 0 or len(yScan)== 0:
+        print('resolution error - please enter appropriate resolution for image size')
+
+    for idx, x in enumerate(xScan):
+        rowX = []
+        rowY = []
+        for y in yScan:
+            rowX.append(x)
+            rowY.append(y)
+
+        try:
+            xArray = np.column_stack((xArray, rowX))
+            yArray = np.column_stack((yArray, rowY))
+        except NameError:
+            xArray = np.array(rowX).astype(float)
+            yArray = np.array(rowY).astype(float)
+
+
+    return xArray, yArray
+
+
+
+
 # LightField Section
-# auto = Automation(True, List[String]())
-#
-# experiment = auto.LightFieldApplication.Experiment
-# acquireCompleted = AutoResetEvent(False)
-#
-# experiment.Load("Automation")
-# experiment.ExperimentCompleted += experiment_completed
-# # experiment.SetValue(SpectrometerSettings.gratingSelected, '[500nm, 1200][1][0]')
-# # InitializeFileParams()
+auto = Automation(True, List[String]())
+
+experiment = auto.LightFieldApplication.Experiment
+acquireCompleted = AutoResetEvent(False)
+
+experiment.Load("Automation")
+experiment.ExperimentCompleted += experiment_completed
+# experiment.SetValue(SpectrometerSettings.gratingSelected, '[500nm, 1200][1][0]')
+# InitializeFileParams()
 
 
 # exposures = [50, 100]
 # specPositions = [560, 435, 546]
-filename = "f1Linescan"
+filename = "testMap2"
 travelTime = 2
 inp = input("Change settings, then press <Enter> to continue")
 
@@ -393,26 +436,68 @@ s, currentPos, commandDict, commandList = initializeGRBL()
 
 
 while True:
-    scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
-    # experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
-    np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
+    scanType = None
+    scanType = input('Specify collection type: "line", or "map".')
+    if scanType == 'line':
+        try:
+            scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
+            experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+            np.savetxt('ScanLists/{}_list.meta'.format(filename), (xArray,yArray), delimiter=',', fmt = '%s')
 
-    for pos in scanList:
-        name = str(filename)+'#{}'.format(str(pos))
-        # experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
-        print('setting exp params')
-        print('Moving to {}'.format(pos))
-        # currentPos, travelTime = update_pos(pos)
-        # travelTime = (float(max(abs(currentPos[0]-pos[0]), abs(currentPos[1]-pos[1]))))*.1
-        # if travelTime <= 1:
-        #     travelTime = 1
-        move_absolute(pos)
-        currentPos = pos
-        # time.sleep(acquisitionTime)
-        # print("Linescan complete")
-        print('sleeping for travel time: ', travelTime)
-        time.sleep(travelTime)
-        # AcquireAndLock(baseFilename)
-    print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
-    move_absolute(scanList[0])
-    currentPos = scanList[0]
+            for pos in scanList:
+                name = str(filename)+'#{}#'.format(str(pos))
+                experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+                print('setting exp params')
+                print('Moving to {}'.format(pos))
+                # currentPos, travelTime = update_pos(pos)
+                # travelTime = (float(max(abs(currentPos[0]-pos[0]), abs(currentPos[1]-pos[1]))))*.1
+                # if travelTime <= 1:
+                #     travelTime = 1
+                move_absolute(pos)
+                currentPos = pos
+                # time.sleep(acquisitionTime)
+                # print("Linescan complete")
+                print('sleeping for travel time: ', travelTime)
+                time.sleep(travelTime)
+                AcquireAndLock(baseFilename)
+            print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
+            move_absolute(scanList[0])
+            currentPos = scanList[0]
+        except:
+            continue
+    if scanType == 'map':
+            try:
+                xArray, yArray, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
+                experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+
+                for i in list(range(len(xArray[:, 0]))):
+                    for j in list(range(len(xArray[0, :]))):
+                        pos = (xArray[i, j], yArray[i, j])
+                        name = str(filename)+'#({},{})#'.format(str(pos[0]), str(pos[1]))
+                        print(pos)
+                        experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+
+                        print('Moving to ({}, {})'.format(pos[0], pos[1]))
+                        print('sleeping for travel time: ', travelTime)
+                        move_absolute(pos)
+                        currentPos = pos
+                        time.sleep(travelTime)
+                        AcquireAndLock(filename)
+                    print('linebreak reset. Sleeping for 10 seconds')
+                    try:
+                        pos = (xArray[i, j-j], yArray[i, j-j])
+                        move_absolute(pos)
+                        currentPos = pos
+                        pos = (xArray[i+1, j-j], yArray[i+1, j-j])
+                        move_absolute(pos)
+                        currentPos = pos
+                        time.sleep(10)
+                    except IndexError:
+                        pass
+                print('#'*100, '\nScan complete! Moving to starting position:', str(xArray[0, 0])+', '+str(yArray[0, 0]))
+                pos = (xArray[0, 0], yArray[0, 0])
+                move_absolute(pos)
+                currentPos = pos
+            except:
+                continue
+    # experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
