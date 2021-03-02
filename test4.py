@@ -1,5 +1,8 @@
 import numpy as np
 import math
+import csv
+import os
+
 
 start = (-0, -0)
 finish = (-10, 30)
@@ -85,9 +88,40 @@ print('LenX row', len(xArray[:,0]))
 # print(xArray[-1, -1], yArray[-1,-1])
 #
 # print(len(xArray[0, :]))
-#
+posDict = {}
+print([xArray, yArray])
+for i in list(range(len(xArray[:, 0]))):
+    for j in list(range(len(xArray[0, :]))):
+        pos = (xArray[i, j], yArray[i, j])
+        posDict[(i,j)] = pos
+# print([posDict])
 # mapEndPos = (xArray[-1, -1], yArray[-1, -1])
 #
+
+dir = 'Lightfield Automation/'
+files = [file for file in os.listdir('Lightfield Automation') if file.endswith('.json')]
+# print('jh')
+# for file in files:
+#     if 'quick' in file:
+#         with open(dir+file, mode='r', newline = ',') as csv_file:
+#             csv_reader = csv.DictReader(csv_file)
+#             for row in csv_reader:
+#                 print(row)
+import json
+
+with open(dir+files[0], 'r') as fp:
+    data = json.load(fp)
+
+print(data['(0, 0)'])
+# print(data)
+            # line_count = 0
+            # for row in csv_reader:
+            #     if line_count == 0:
+            #         print(f'Column names are {", ".join(row)}')
+            #         line_count += 1
+            #     print(f'\t{row["name"]} works in the {row["department"]} department, and was born in {row["birthday month"]}.')
+            #     line_count += 1
+            # print(f'Processed {line_count} lines.')
 # print('mapEnd[0]', mapEndPos[1])
 # print(mapArray[0, 0])
 # val = tuple(mapArray[0, 0])

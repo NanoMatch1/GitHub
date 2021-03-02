@@ -14,6 +14,9 @@ from System.Threading import AutoResetEvent
 from System import String
 from System.Collections.Generic import List
 
+# config file save
+import json
+
 # Add needed dll references
 sys.path.append(os.environ['LIGHTFIELD_ROOT'])
 sys.path.append(os.environ['LIGHTFIELD_ROOT']+"\\AddInViews")
@@ -275,7 +278,6 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                 move_absolute(lineScanList[0])
                 input("Press 'Enter' to run linescan. Close console to quit.")
                 return lineScanList, acquisitionTime, filename
-                break
 
             if command == 'map':
                 mapStart, mapFinish = None, None
@@ -345,7 +347,7 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
 
 
 
-def initializeGRBL():
+def initializeGRBL(motorSpeed = 1000):
     # Open grbl serial port
     s = serial.Serial('COM6',115200)
 
@@ -355,7 +357,7 @@ def initializeGRBL():
     s.flushInput()  # Flush startup text in serial input
 
     # Stream g-code to grbl
-    s.write(str.encode('G90 F1000'+'\n'))
+    s.write(str.encode('G90 F{}'.format(motorSpeed)+'\n'))
     grbl_out = s.readline() # Wait for grbl response with carriage return
     print('Moving in absolute coordinates : ' + str(grbl_out.strip()))
 
@@ -414,7 +416,7 @@ def generate_2D_arrays(start, finish, resolution):
 
 
 
-# LightField Section
+## '''LightField Section'''
 auto = Automation(True, List[String]())
 
 experiment = auto.LightFieldApplication.Experiment
@@ -422,55 +424,60 @@ acquireCompleted = AutoResetEvent(False)
 
 experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
-# experiment.SetValue(SpectrometerSettings.gratingSelected, '[500nm, 1200][1][0]')
-# InitializeFileParams()
 
 
-# exposures = [50, 100]
-# specPositions = [560, 435, 546]
-filename = "f3map"
+filename = "f3mapquick"
+motorSpeed = 1000
 travelTime = 2
 inp = input("Change settings, then press <Enter> to continue")
 
-s, currentPos, commandDict, commandList = initializeGRBL()
+s, currentPos, commandDict, commandList = initializeGRBL(motorSpeed)
 
 
 while True:
     scanType = None
     scanType = input('Specify collection type: "line", or "map".')
     if scanType == 'line':
-        try:
-            scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
-            experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
-            np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
 
-            for pos in scanList:
-                name = str(filename)+'#{}#'.format(str(pos))
-                experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
-                print('setting exp params')
-                print('Moving to {}'.format(pos))
-                # currentPos, travelTime = update_pos(pos)
-                # travelTime = (float(max(abs(currentPos[0]-pos[0]), abs(currentPos[1]-pos[1]))))*.1
-                # if travelTime <= 1:
-                #     travelTime = 1
-                move_absolute(pos)
-                currentPos = pos
-                # time.sleep(acquisitionTime)
-                # print("Linescan complete")
-                print('sleeping for travel time: ', travelTime)
-                time.sleep(travelTime)
-                AcquireAndLock(baseFilename)
-            print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
-            move_absolute(scanList[0])
-            currentPos = scanList[0]
-        except:
-            continue
+        scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
+        experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+        np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
+
+        for idx, pos in enumerate(scanList):
+            name = str(filename)+'#[{}]#'.format(str(idx))
+            experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+            print('setting exp params')
+            print('Moving to {}'.format(pos))
+            # currentPos, travelTime = update_pos(pos)
+            # travelTime = (float(max(abs(currentPos[0]-pos[0]), abs(currentPos[1]-pos[1]))))*.1
+            # if travelTime <= 1:
+            #     travelTime = 1
+            move_absolute(pos)
+            currentPos = pos
+            # time.sleep(acquisitionTime)
+            # print("Linescan complete")
+            print('sleeping for travel time: ', travelTime)
+            time.sleep(travelTime)
+            AcquireAndLock(filename)
+        print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
+        move_absolute(scanList[0])
+        currentPos = scanList[0]
+
     if scanType == 'map':
             # try:
         xArray, yArray, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
-        experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
-        np.savetxt('ScanLists/{}_list.meta'.format(filename), (xArray,yArray), delimiter=',', fmt = '%s')
 
+        posDict = {}
+        for i in list(range(len(xArray[:, 0]))):
+            for j in list(range(len(xArray[0, :]))):
+                pos = (xArray[i, j], yArray[i, j])
+                posDict[str((i,j))] = pos
+
+        with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
+            json.dump(posDict, jsonfile)
+
+        experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+        pause()
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
