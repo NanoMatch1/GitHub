@@ -327,8 +327,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                 currentPos = interpret_move(currentPos, mapHome)
                 move_absolute(mapHome)
 
-                filename = filename+r' #{}x{}#{}s#'.format(len(xArray[0, :]), len(yArray[0, :]), acquisitionTime)
-                print('Estimated run time: {} sec, or \n{} min, or \n{} hours'.format(runTime, runTime/60, runTime/360))
+                filename = filename+r' #{}x{}#{}s#'.format(len(xArray[0, :]), len(yArray[:, 0]), acquisitionTime)
+                print('Estimated run time: {} sec, or \n{} min, or \n{} hours'.format(runTime, runTime/60, runTime/3600))
                 while True:
                     com3 = input("Press 'Enter' to run linescan. Close console to quit.")
                     if com3 == 'show':
@@ -428,7 +428,7 @@ experiment.ExperimentCompleted += experiment_completed
 
 # exposures = [50, 100]
 # specPositions = [560, 435, 546]
-filename = "testMap2"
+filename = "f3map"
 travelTime = 2
 inp = input("Change settings, then press <Enter> to continue")
 
@@ -442,7 +442,7 @@ while True:
         try:
             scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
             experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
-            np.savetxt('ScanLists/{}_list.meta'.format(filename), (xArray,yArray), delimiter=',', fmt = '%s')
+            np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
 
             for pos in scanList:
                 name = str(filename)+'#{}#'.format(str(pos))
@@ -466,38 +466,39 @@ while True:
         except:
             continue
     if scanType == 'map':
-            try:
-                xArray, yArray, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
-                experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+            # try:
+        xArray, yArray, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
+        experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+        np.savetxt('ScanLists/{}_list.meta'.format(filename), (xArray,yArray), delimiter=',', fmt = '%s')
 
-                for i in list(range(len(xArray[:, 0]))):
-                    for j in list(range(len(xArray[0, :]))):
-                        pos = (xArray[i, j], yArray[i, j])
-                        name = str(filename)+'#({},{})#'.format(str(pos[0]), str(pos[1]))
-                        print(pos)
-                        experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+        for i in list(range(len(xArray[:, 0]))):
+            for j in list(range(len(xArray[0, :]))):
+                pos = (xArray[i, j], yArray[i, j])
+                name = str(filename)+'#({},{})#'.format(str(pos[0]), str(pos[1]))
+                print(pos)
+                experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
 
-                        print('Moving to ({}, {})'.format(pos[0], pos[1]))
-                        print('sleeping for travel time: ', travelTime)
-                        move_absolute(pos)
-                        currentPos = pos
-                        time.sleep(travelTime)
-                        AcquireAndLock(filename)
-                    print('linebreak reset. Sleeping for 10 seconds')
-                    try:
-                        pos = (xArray[i, j-j], yArray[i, j-j])
-                        move_absolute(pos)
-                        currentPos = pos
-                        pos = (xArray[i+1, j-j], yArray[i+1, j-j])
-                        move_absolute(pos)
-                        currentPos = pos
-                        time.sleep(10)
-                    except IndexError:
-                        pass
-                print('#'*100, '\nScan complete! Moving to starting position:', str(xArray[0, 0])+', '+str(yArray[0, 0]))
-                pos = (xArray[0, 0], yArray[0, 0])
+                print('Moving to ({}, {})'.format(pos[0], pos[1]))
+                print('sleeping for travel time: ', travelTime)
                 move_absolute(pos)
                 currentPos = pos
-            except:
-                continue
+                time.sleep(travelTime)
+                AcquireAndLock(filename)
+            print('linebreak reset. Sleeping for 10 seconds')
+            try:
+                pos = (xArray[i, j-j], yArray[i, j-j])
+                move_absolute(pos)
+                currentPos = pos
+                pos = (xArray[i+1, j-j], yArray[i+1, j-j])
+                move_absolute(pos)
+                currentPos = pos
+                time.sleep(10)
+            except IndexError:
+                pass
+        print('#'*100, '\nScan complete! Moving to starting position:', str(xArray[0, 0])+', '+str(yArray[0, 0]))
+        pos = (xArray[0, 0], yArray[0, 0])
+        move_absolute(pos)
+        currentPos = pos
+            # except:
+                # continue
     # experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)

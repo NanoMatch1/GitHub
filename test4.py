@@ -53,6 +53,7 @@ def generate_2D_arrays(start, finish, resolution):
             yArray = np.array(rowY).astype(float)
 
 
+    print('LenX', len(xScan), 'lenY', len(yScan))
     return xArray, yArray
 
 
@@ -66,16 +67,18 @@ def run_2D_map(xArray, yArray, acquisitionTime):
 xArray, yArray = generate_2D_arrays(start, finish, res)
 
 print('X')
-print(xArray[:, 0])
+print(xArray)
 print('-----------------------------------')
-print(yArray[:, 0])
+print('Y')
+print(yArray)
 # pause()
 for i in list(range(len(xArray[:, 0]))):
-    # print('len xArray', len(xArray)-1)
     for j in list(range(len(xArray[0, :]))):
-        # print('len yArray', len(yArray)-1)
         print(xArray[i, j], yArray[i, j])
     print('linebreak reset')
+
+print('LenX col', len(xArray[0, :]))
+print('LenX row', len(xArray[:,0]))
 # print('start')
 # print(xArray[0,0], yArray[0,0])
 # print('finish')
