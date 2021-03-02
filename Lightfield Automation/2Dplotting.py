@@ -16,21 +16,90 @@ from Header_Finder import *
 #Hint: Right-click in the address bar in File Explorer and copy the address
 # os.chdir(r'2D_map_data')
 
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-2-21 Maps and scans\Calibration tests\Line 2x36 series"
+fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-2-21 Maps and scans\quickmap"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
-dataDir = r'data\{}'.format(fileDir)
+dataDir = r'{}\data'.format(fileDir)
 
 #check the current directory.
 os.chdir(dataDir)
 
+dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
 
 #dir_path = "./data/" #Path to data directory
-basefile = "Trimyristin beta-in-shell A" # Base file name
-ext = ".dat" # Extension
+basefile = "f3mapquick" # Base file name
+ext = ".csv" # Extension
 
-filenames = [basefile + "_" + str(i) + ext for i in range(1,2501)]
-df = pd.concat([pd.read_table(f, delim_whitespace=True, index_col=0, header=None, names=[None, str(i+1)]).transpose() for i, f in enumerate(filenames)])
-df.head(10)
+for file, data in dataDict.items():
+    posIdx = file[file.index('(')+1:file.index(')')]
+    print(posIdx)
+    # pos = float(posIdx[:posIdx.index(',')]), float(posIdx[posIdx.index(',')+1:])
+    # print(str(pos))
+    try:
+        dataPosDict[posIdx] = data
+    except NameError:
+        dataPosDict = {posIdx: data}
+
+print(len(dataPosDict))
+
+''' Need to generate a 3D array or "cube" (x, y, spectra)'''
+# import or generate array/scan dimensions
+
+xScan = list(range(31))
+yScan = list(range(21))
+
+dat = []
+for idx, x in enumerate(xScan):
+    rowX = []
+    rowY = []
+
+    for y in yScan:
+        rowX.append(x)
+        rowY.append(y)
+        data = dataPosDict[str(x)+'.0,'+str(y)+'.0']
+        dat.append(data[:, 1])
+
+    try:
+        xArray = np.column_stack((xArray, rowX))
+        yArray = np.column_stack((yArray, rowY))
+        # dataArray = np.column_stack((dataArray, dat))
+    except NameError:
+        xArray = np.array(rowX).astype('float')
+        yArray = np.array(rowY).astype('float')
+        # dataArray = np.array(dat).astype(float)
+
+# print(xArray, yArray, dataArray)
+print(len(dat))
+
+# dataArray = dataArray[:, 1]
+# print(dataArray)
+# pause()
+
+
+# cube = np.stack((xArray,yArray,dataArray))
+xflat = xArray.flatten()
+yflat = yArray.flatten()
+dataArray = np.array(dat).astype('float')
+dataflat = dataArray.flatten()
+print(len(dataflat))
+# pause()
+
+print(xflat, yflat,dataflat)
+# cube = np.append(xflat,dataArray)
+
+
+''' dataArray = []
+for i in list(range(31)):
+    for j in list(range(21)):
+        dataArray.append(dataPosDict[xArray[i,j],yArray[i,j]))'''
+cube = np.reshape(dataflat, (31,21,1340))
+
+
+pause('cubed')
+
+
+# filenames = [basefile + "_" + str(i) + ext for i in range(1,2501)]
+# df = pd.concat([pd.read_table(f, delim_whitespace=True, index_col=0, header=None, names=[None, str(i+1)]).transpose() for i, f in enumerate(filenames)])
+# df.head(10)
 
 #
 # cube = df.values.reshape(50,50,1600).transpose(1,0,2)
@@ -113,29 +182,35 @@ df.head(10)
 #         ax[0].plot(pixel_domain,cube[i,j,lp:rp], pixel_domain, baselines[i,j,:])
 #         ax[1].plot(pixel_domain, baselined[i,j,:])
 #
+'''
+Explore
+Use the slider widget below to move through the wave numbers.
+
+Mouse over on image to see pixel coordinates.
+
+Go slow! Use arrow keys to step for more control.'''
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+img = ax.imshow(baselined[:,:,1194], interpolation='bilinear', cmap='hot')
+color_bar = plt.colorbar(img)
+
+def update_im(idx):
+    img.set_data(baselined[:,:,idx-1])
+    fig.canvas.draw()
+    return "Wave number: " + str(df.columns[(idx-1)+lp])
+interact(update_im, idx=(1,baselined.shape[2],1));
 
 
-# fig = plt.figure()
-# ax = fig.add_subplot(1, 1, 1)
-# img = ax.imshow(baselined[:,:,1194], interpolation='bilinear', cmap='hot')
-# color_bar = plt.colorbar(img)
-#
-# def update_im(idx):
-#     img.set_data(baselined[:,:,idx-1])
-#     fig.canvas.draw()
-#     return "Wave number: " + str(df.columns[(idx-1)+lp])
-# interact(update_im, idx=(1,baselined.shape[2],1));
 
+# ENTER WAVE NUMBER INDEX OF INTEREST
+w = 1192
 
-
-# # ENTER WAVE NUMBER INDEX OF INTEREST
-# w = 1192
-#
-# # ENTER COORDINATES HERE
-# x0 = 22
-# y0 = 5
-# x1 = 22
-# y1 = 43
+# ENTER COORDINATES HERE
+x0 = 22
+y0 = 5
+x1 = 22
+y1 = 43
 #
 #
 #
