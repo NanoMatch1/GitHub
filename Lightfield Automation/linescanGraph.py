@@ -5,11 +5,11 @@ from Header_Finder import *
 
 import numpy as np
 
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\02-28-21 Map and Scans"
+fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-2-21 Maps and scans\Calibration tests\Line 2x36 series"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
 
 
-dataDir = '{}'.format(fileDir)
+dataDir = 'data/{}'.format(fileDir)
 # os.chdir(dataDir)
 
 dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
@@ -17,7 +17,85 @@ dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
 # organise_files(fileDir = fileDir, report = True)
 # process_files(fileDir = fileDir, avgFrames = True, normalise = False, report = True, ignoreWarnings = True)
 
-# pause()
+scanDict = {}
+scanDictRunning = {}
+scanNameList = []
+scanGroup = -1
+runningDict = {}
+for file, data in dataDict.items():
+    scanName = file[:file.index('#')]
+    print(scanName)
+    # if not scanName in scanNameList:
+    #     scanNameList.append(scanName)
+    scanIndex = file[file.index('#')+2:]
+    scanIndex = scanIndex[:scanIndex.index('#')-1]
+    print(scanIndex)
+    if scanName == scanGroup:
+        runningDict[scanIndex] = data
+    else:
+        if scanGroup != -1:
+            scanDict[scanGroup] = runningDict
+        scanGroup = scanName
+        runningDict = {}
+        runningDict[scanIndex] = data
+        print(runningDict)
+scanDict[scanGroup] = runningDict
+
+    #
+    # try:
+    #     scanDict[str(scanName+scanIndex)] = data
+    # except NameError:
+    #     scanDict = {str(scanName)+str(scanIndex): data}
+
+for key, item in scanDict.items():
+
+    # print('filename, ',key, 'scan indexes', item)
+
+    E2gList = []
+    for scanIdx in list(range(len(item))):
+        data = item[str(scanIdx)]
+        dataX, dataY = (data[:, 0], data[:, 1])
+        E2g = max(dataY[743:756])
+        E2gList.append(E2g)
+
+    # for fileIndex, data in item.items():
+    #     dataX = data[:, 0]
+    #     dataY = data[:, 1]
+    #     E2g = max(dataY[743:756]) # this works for pixels only - use find_nearest() for calibrated axes
+    #     E2gList.append(E2g)
+        # print('index:', fileIndex, 'data:', data)
+        # if int(fileIndex) < 10:
+        #     plt.plot(data[:, 0], data[:, 1], label = (str(key)+str(fileIndex)))
+        #     count += 1
+    plt.plot(list(range(len(E2gList))), E2gList, label = key)
+    E2gList = []
+    # plt.show()
+plt.legend()
+plt.show()
+
+
+
+# for key, data in scanDict.items():
+#     print(key)
+#     scanName = key[:key.index('[')]
+#     idx = key[key.index('[')+1:key.index(']')]
+#
+#     # idx = idx[:idx.index(']')]
+#     # print(idx)
+#     pause()
+#     try:
+#         if not scanName in fullScanDict.keys():
+#             pass
+#     except:
+#         fullScanDict = {scanName: data}
+
+
+
+
+
+# for name in scanNameList:
+
+
 
 def linescan_slider(dataDict,res=1, normaliseRange = None):
     from matplotlib.widgets import Slider
@@ -124,4 +202,4 @@ def linescan_slider(dataDict,res=1, normaliseRange = None):
 
     plt.show()
 
-linescan_slider(dataDict, normaliseRange = (600, 800))
+# linescan_slider(dataDict, normaliseRange = (600, 800))
