@@ -1,11 +1,12 @@
 import sys
-sys.path.insert(0, 'C:/GitHub/Raman/Raman')
+# sys.path.insert(0, 'C:/GitHub/Raman/Raman')
+sys.path.insert(0, r'C:\Users\sjbro\github\Raman')
 from Modular_Raman_Analyser import *
 from Header_Finder import *
 
 import numpy as np
 
-fileDir = r"H:\PhD\Raman\2021\3-3-21 Maps and lines\line calibration x"
+fileDir = r"D:\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-3-21 Maps and lines\line calibration x"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
 
 
@@ -18,6 +19,12 @@ dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
 
 # organise_files(fileDir = fileDir, report = True)
 # process_files(fileDir = fileDir, avgFrames = True, normalise = False, report = True, ignoreWarnings = True)
+
+for file, data in dataDict.items():
+    dataX, dataY = (data[:, 0], data[:, 1])
+plt.plot(dataX, dataY)
+plt.show()
+pause()
 
 scanDict = {}
 scanDictRunning = {}
