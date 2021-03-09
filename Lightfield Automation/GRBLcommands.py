@@ -206,13 +206,14 @@ def main_loop(s, currentPos, commandDict, commandList):
 
 def initializeGRBL():
     # Open grbl serial port
-    s = serial.Serial('COM6',115200)
+    s = serial.Serial('COM8',115200)
 
     # Wake up grbl
-    s.write(str.encode("hello"))
+    # s.write(str.encode("hello"))
     time.sleep(2)   # Wait for grbl to initialize
     s.flushInput()  # Flush startup text in serial input
-
+    s.write(str.encode('M115'+'\n')) # show firmware version
+    grbl_out = s.readline() # Wait for grbl response with carriage return
     # Stream g-code to grbl
     s.write(str.encode('G90 F1000'+'\n'))
     grbl_out = s.readline() # Wait for grbl response with carriage return
@@ -224,6 +225,9 @@ def initializeGRBL():
 
     return s, currentPos, commandDict, commandList
 #
+
+initializeGRBL()
+
 #
 # s, currentPos, commandDict, commandList = initializeGRBL()
 # main_loop(currentPos, commandDict, commandList)
