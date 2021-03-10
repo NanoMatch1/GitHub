@@ -243,6 +243,16 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
             if command == 'gcode':
                 command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
                 send_gcode(str(command))
+            if command == 'light':
+                while True:
+                    pwr = input('Enter power from 0 to 150.')
+                    try:
+                        pwr = int(pwr)
+                        if pwr <= 255 and pwr >= 0:
+                            break
+                    except:
+                        pass
+                lightOn(pwr)
             if command == 'linescan':
                 lineStart, lineFinish = None, None
                 print('Preparing for linescan:')
@@ -269,6 +279,16 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         currentMode = imageMode(currentMode)
                     if command == 'adjustpower':
                         currentMode = adjustPower()
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
 
                     if lineStart and lineFinish:
                         break
@@ -311,6 +331,16 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         currentMode = imageMode(currentMode)
                     if com3 == 'adjustpower':
                         currentMode = adjustPower()
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
                     if com3 == '':
                         break
                 if currentMode == 'image':
@@ -337,6 +367,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                     if command == 'gcode':
                         command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
                         send_gcode(str(command))
+
+
                     if command == 'quit':
                         s.close()
                     print('currentMode =', currentMode)
@@ -346,6 +378,16 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         currentMode = imageMode(currentMode)
                     if command == 'adjustpower':
                         currentMode = adjustPower()
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
 
                     if mapStart and mapFinish:
                         break
@@ -400,6 +442,16 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                     if command == 'gcode':
                         command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
                         send_gcode(str(command))
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
 
                     if com3 == '':
                         break
@@ -434,6 +486,10 @@ def adjustPower(power = None):
                 power = input('Incorrect value - please enter a float.\n')
     return
 
+def lightOn(power = 255):
+    s.write(str.encode('M106 P2 S{}\n'.format(power)))
+    grbl_out = s.readline() # Wait for grbl response with carriage return
+
 def ramanMode(currentMode):
     if currentMode == 'image':
         s.write(str.encode('T0\n'))
@@ -450,6 +506,7 @@ def ramanMode(currentMode):
             grbl_out = s.readline() # Wait for grbl response with carriage return
             adjustPower(power = 'max')
     currentMode = "raman"
+    lightOn(0)
     return currentMode
 
 def imageMode(currentMode):
@@ -468,6 +525,7 @@ def imageMode(currentMode):
             grbl_out = s.readline() # Wait for grbl response with carriage return
             adjustPower(power = 'min')
     currentMode = "image"
+    lightOn()
     return currentMode
 
 def initializeGRBL(motorSpeed = 1000, comPort = 'COM8'):
@@ -487,7 +545,7 @@ def initializeGRBL(motorSpeed = 1000, comPort = 'COM8'):
     print('Moving in absolute coordinates : ' + str(grbl_out.strip()))
 
     commandDict = {"quit": "quit", "sethome": "sethome"}
-    commandList = ['gcode','quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map', 'imagemode', 'ramanmode', 'adjustpower']
+    commandList = ['light','gcode','quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map', 'imagemode', 'ramanmode', 'adjustpower']
 
 
     currentPos = (0,0)
@@ -554,7 +612,7 @@ experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
 comPort = 'COM8'
-filename = "duetMaps"
+filename = "f5map1"
 motorSpeed = 500
 travelTime = 2
 while True:
@@ -600,7 +658,7 @@ while True:
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
-                posDict[str((i,j))] = '#({},{})#'.format(str(pos[0]), str(pos[1]))
+                posDict[str((j,i))] = '{},{}'.format(str(pos[0]), str(pos[1]))
 
         with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
             json.dump(posDict, jsonfile)
@@ -610,7 +668,7 @@ while True:
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
-                name = str(filename)+'#({},{})#'.format(str(pos[0]), str(pos[1]))
+                name = str(filename)+'#({},{})#'.format(str(j), str(i))
                 print(pos)
                 experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
 
