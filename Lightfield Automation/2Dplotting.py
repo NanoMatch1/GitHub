@@ -145,7 +145,7 @@ def simple_background(dataDict, headerDict, dataDir, moveFiles = False, singleBG
 #Hint: Right-click in the address bar in File Explorer and copy the address
 # os.chdir(r'2D_map_data')
 
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-9-21 Duet calibrations\Map1\data"
+fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-9-21 Duet calibrations\Map2"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
 dataDir = r'{}'.format(fileDir)
 BG_sub = True
@@ -164,7 +164,8 @@ if not os.path.exists(r'{}\data\cubed'.format(dataDir)):
     #dir_path = "./data/" #Path to data directory
     # basefile = "f1map1" # Base file name
     ext = ".csv" # Extension
-    arrayDims = (23,19)
+    '''##################### enter array dims here'''
+    arrayDims = (17,8)
     flatArray = []
     posList = []
     orderedPosList = []
