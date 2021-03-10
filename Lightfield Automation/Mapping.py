@@ -658,7 +658,12 @@ while True:
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
+<<<<<<< HEAD
                 posDict[str((j,i))] = '{},{}'.format(str(pos[0]), str(pos[1]))
+=======
+
+                posDict[(i,j)] = '({},{})'.format(str(pos[0]), str(pos[1]))
+>>>>>>> 08f04113ccd90076cf1d89da2983aca3f60994c9
 
         with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
             json.dump(posDict, jsonfile)
