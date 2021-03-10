@@ -240,6 +240,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 adjustPower()
             if command == 'quit':
                 s.close()
+            if command == 'gcode':
+                command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                send_gcode(str(command))
             if command == 'linescan':
                 lineStart, lineFinish = None, None
                 print('Preparing for linescan:')
@@ -255,6 +258,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         lineFinish = currentPos
                         print("Finish position entered:", lineFinish)
 
+                    if command == 'gcode':
+                        command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                        send_gcode(str(command))
                     if command == 'quit':
                         s.close()
                     if command == 'ramanmode':
@@ -296,6 +302,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 move_absolute(lineScanList[0])
                 while True:
                     com3 = input("Press 'Enter' to run linescan, or enter a command. Close console to quit.\n")
+                    if command == 'gcode':
+                        send_gcode(str(command))
+
                     if com3 == 'ramanmode':
                         currentMode = ramanMode(currentMode)
                     if com3 == 'imagemode':
@@ -325,7 +334,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         mapFinish = currentPos
                         print("Finish position entered:", mapFinish)
 
-
+                    if command == 'gcode':
+                        command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                        send_gcode(str(command))
                     if command == 'quit':
                         s.close()
                     print('currentMode =', currentMode)
@@ -386,6 +397,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         currentMode = imageMode(currentMode)
                     if com3 == 'adjustpower':
                         currentMode = adjustPower()
+                    if command == 'gcode':
+                        command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                        send_gcode(str(command))
 
                     if com3 == '':
                         break
@@ -473,7 +487,7 @@ def initializeGRBL(motorSpeed = 1000, comPort = 'COM8'):
     print('Moving in absolute coordinates : ' + str(grbl_out.strip()))
 
     commandDict = {"quit": "quit", "sethome": "sethome"}
-    commandList = ['quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map', 'imagemode', 'ramanmode', 'adjustpower']
+    commandList = ['gcode','quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map', 'imagemode', 'ramanmode', 'adjustpower']
 
 
     currentPos = (0,0)
@@ -586,8 +600,8 @@ while True:
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
-                posDict[str((i,j))] = pos
-                posDict[str((i,j))] = '({},{})'.format(str(pos[0]), str(pos[1]))
+
+                posDict[(i,j)] = '({},{})'.format(str(pos[0]), str(pos[1]))
 
         with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
             json.dump(posDict, jsonfile)
