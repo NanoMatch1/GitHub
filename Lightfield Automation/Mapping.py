@@ -612,7 +612,7 @@ experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
 comPort = 'COM8'
-filename = "f5map1"
+filename = "f5map6"
 motorSpeed = 500
 travelTime = 2
 while True:
@@ -657,23 +657,21 @@ while True:
         posDict = {}
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
-                pos = (xArray[i, j], yArray[i, j])
-<<<<<<< HEAD
-                posDict[str((j,i))] = '{},{}'.format(str(pos[0]), str(pos[1]))
-=======
+                pos = (yArray[i, j], xArray[i, j])
 
-                posDict[(i,j)] = '({},{})'.format(str(pos[0]), str(pos[1]))
->>>>>>> 08f04113ccd90076cf1d89da2983aca3f60994c9
+                posDict['{},{}'.format(i,j)] = '({},{})'.format(str(pos[0]), str(pos[1]))
 
+# experiment.GetValue(ExperimentSettings.FileNameGenerationDirectory)))
         with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
             json.dump(posDict, jsonfile)
 
         experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
         pause()
+        index = 0
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
-                name = str(filename)+'#({},{})#'.format(str(j), str(i))
+                name = str(filename)+'[{}]#({},{})#'.format(index, str(j), str(i))
                 print(pos)
                 experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
 
@@ -683,6 +681,7 @@ while True:
                 currentPos = pos
                 time.sleep(travelTime)
                 AcquireAndLock(filename)
+                index += 1
             print('linebreak reset. Sleeping for 10 seconds')
             try:
                 pos = (xArray[i, j-j], yArray[i, j-j])
