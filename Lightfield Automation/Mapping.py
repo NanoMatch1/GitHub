@@ -253,6 +253,10 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                     except:
                         pass
                 lightOn(pwr)
+
+            if command == 'focus':
+                z_focus()
+
             if command == 'linescan':
                 lineStart, lineFinish = None, None
                 print('Preparing for linescan:')
@@ -289,6 +293,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                             except:
                                 pass
                         lightOn(pwr)
+
+                    if command == 'focus':
+                        z_focus()
 
                     if lineStart and lineFinish:
                         break
@@ -341,11 +348,14 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                             except:
                                 pass
                         lightOn(pwr)
+
+                    if command == 'focus':
+                        z_focus()
                     if com3 == '':
                         break
                 if currentMode == 'image':
                     currentMode == ramanMode(currentMode)
-                return lineScanList, acquisitionTime, filename
+                return lineScanList, acquisitionTime, filename, currentPos
 
             if command == 'map':
                 mapStart, mapFinish = None, None
@@ -388,6 +398,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                             except:
                                 pass
                         lightOn(pwr)
+
+                    if command == 'focus':
+                        z_focus()
 
                     if mapStart and mapFinish:
                         break
@@ -453,6 +466,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                                 pass
                         lightOn(pwr)
 
+                    if command == 'focus':
+                        z_focus()
+
                     if com3 == '':
                         break
                 if currentMode == 'image':
@@ -485,6 +501,20 @@ def adjustPower(power = None):
             except:
                 power = input('Incorrect value - please enter a float.\n')
     return
+
+def z_focus():
+    while True:
+        zStep = input('Enter focus step in microns. Type "done" to break loop.\n')
+        try:
+            float(zStep)
+            s.write(str.encode('G1 Z{}\n'.format(zStep)))
+            grbl_out = s.readline()
+        except:
+            if zStep == 'done':
+                break
+            else:
+                print('Number not recognised - please enter a float.')
+
 
 def lightOn(power = 255):
     s.write(str.encode('M106 P2 S{}\n'.format(power)))
@@ -545,7 +575,7 @@ def initializeGRBL(motorSpeed = 1000, comPort = 'COM8'):
     print('Moving in absolute coordinates : ' + str(grbl_out.strip()))
 
     commandDict = {"quit": "quit", "sethome": "sethome"}
-    commandList = ['light','gcode','quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map', 'imagemode', 'ramanmode', 'adjustpower']
+    commandList = ['focus','light','gcode','quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map', 'imagemode', 'ramanmode', 'adjustpower']
 
 
     currentPos = (0,0)
@@ -612,7 +642,7 @@ experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
 comPort = 'COM8'
-filename = "f5map6"
+filename = "f6line3"
 motorSpeed = 500
 travelTime = 2
 while True:
@@ -629,10 +659,48 @@ s, currentPos, commandDict, commandList = initializeGRBL(motorSpeed, comPort)
 
 while True:
     scanType = None
-    scanType = input('Specify collection type: "line", or "map".')
+    scanType = input('Specify collection type: "line", "series", or "map".')
+    if scanType == 'series':
+
+        while True:
+            scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
+            try:
+                scanSeries = np.column_stack((scanSeries, scanList))
+            except NameError:
+                scanSeries = np.array(scanList)
+            next = input('Type "add" to add another line to the series, or press <Enter> to start scan.\n')
+            if next == 'add':
+                input('Remember to take images')
+                continue
+            if next == '':
+                break
+
+        experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+        np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanSeries), delimiter=',', fmt = '%s')
+
+        for scanNum, scanList in enumerate(scanSeries):
+            print("Next scan in 10 seconds...")
+            time.sleep(10)
+
+            for idx, pos in enumerate(scanList):
+                name = str(filename)+'_scan{}#[{}]#'.format(str(scanNum), str(idx))
+                experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+                print('setting exp params')
+                print('Moving to {}'.format(pos))
+                move_absolute(pos)
+                currentPos = pos
+                print('sleeping for travel time: ', travelTime)
+                time.sleep(travelTime)
+                AcquireAndLock(filename)
+
+            print("Waiting for newline")
+        print('#'*100, '\nScan complete! Moving to starting position:', scanSeries[0, 0])
+        move_absolute(scanSeries[0, 0])
+        currentPos = scanSeries[0, 0]
+
     if scanType == 'line':
 
-        scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
+        scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
         experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
         np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
 
