@@ -13,7 +13,7 @@ from System.Threading import AutoResetEvent
 # Import c compatible List and String
 from System import String
 from System.Collections.Generic import List
-
+import math
 # config file save
 import json
 
@@ -298,7 +298,7 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         z_focus()
 
                     if lineStart and lineFinish:
-                        lineVector = (float(lineFinish[0])-float(lineStart[0]), float(lineFinish[1])-float(lineStart[1])
+                        lineVector = (float(lineFinish[0])-float(lineStart[0]), float(lineFinish[1])-float(lineStart[1]))
                         print('Line is {} microns long.'.format(math.sqrt((lineVector[0]**2)+(lineVector[1]**2))))
                         break
                 while True:
@@ -326,7 +326,7 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
 
                 print("Linescan ready:")
                 print(lineScanList)
-                scanTime = len(lineScanList*acquisitionTime)
+                scanTime = len(lineScanList)*acquisitionTime
                 print("Estimated completion time: {} hours, {} minutes".format(scanTime/360,scanTime/60))
                 print("Returning to start position.")
                 currentPos = interpret_move(currentPos, lineScanList[0])
