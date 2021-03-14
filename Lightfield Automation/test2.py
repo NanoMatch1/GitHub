@@ -5,6 +5,8 @@ import math
 get = 'adjustPower5'
 get = get.lstrip('adjustPower')
 print(get)
+
+print(math.sqrt(16))
 # x = abs(-50)
 # print(x)
 #

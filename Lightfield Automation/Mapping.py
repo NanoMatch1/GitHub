@@ -298,6 +298,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         z_focus()
 
                     if lineStart and lineFinish:
+                        lineVector = (float(lineFinish[0])-float(lineStart[0]), float(lineFinish[1])-float(lineStart[1])
+                        print('Line is {} microns long.'.format(math.sqrt((lineVector[0]**2)+(lineVector[1]**2))))
                         break
                 while True:
                     lineScanRes = input("Enter number of points on line to scan:\n")
@@ -324,6 +326,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
 
                 print("Linescan ready:")
                 print(lineScanList)
+                scanTime = len(lineScanList*acquisitionTime)
+                print("Estimated completion time: {} hours, {} minutes".format(scanTime/360,scanTime/60))
                 print("Returning to start position.")
                 currentPos = interpret_move(currentPos, lineScanList[0])
                 move_absolute(lineScanList[0])
@@ -503,6 +507,7 @@ def adjustPower(power = None):
     return
 
 def z_focus():
+    s.write(str.encode('G91\n'))
     while True:
         zStep = input('Enter focus step in microns. Type "done" to break loop.\n')
         try:
@@ -511,6 +516,7 @@ def z_focus():
             grbl_out = s.readline()
         except:
             if zStep == 'done':
+                s.write(str.encode('G90\n'))
                 break
             else:
                 print('Number not recognised - please enter a float.')
@@ -642,7 +648,7 @@ experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
 comPort = 'COM8'
-filename = "f12map1"
+filename = "f14map1"
 motorSpeed = 500
 travelTime = 2
 while True:
@@ -660,43 +666,43 @@ s, currentPos, commandDict, commandList = initializeGRBL(motorSpeed, comPort)
 while True:
     scanType = None
     scanType = input('Specify collection type: "line", "series", or "map".')
-    if scanType == 'series':
-
-        while True:
-            scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
-            try:
-                scanSeries = np.column_stack((scanSeries, scanList))
-            except NameError:
-                scanSeries = np.array(scanList)
-            next = input('Type "add" to add another line to the series, or press <Enter> to start scan.\n')
-            if next == 'add':
-                input('Remember to take images')
-                continue
-            if next == '':
-                break
-
-        experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
-        np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanSeries), delimiter=',', fmt = '%s')
-
-        for scanNum, scanList in enumerate(scanSeries):
-            print("Next scan in 10 seconds...")
-            time.sleep(10)
-
-            for idx, pos in enumerate(scanList):
-                name = str(filename)+'_scan{}#[{}]#'.format(str(scanNum), str(idx))
-                experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
-                print('setting exp params')
-                print('Moving to {}'.format(pos))
-                move_absolute(pos)
-                currentPos = pos
-                print('sleeping for travel time: ', travelTime)
-                time.sleep(travelTime)
-                AcquireAndLock(filename)
-
-            print("Waiting for newline")
-        print('#'*100, '\nScan complete! Moving to starting position:', scanSeries[0, 0])
-        move_absolute(scanSeries[0, 0])
-        currentPos = scanSeries[0, 0]
+    # if scanType == 'series':
+    #
+    #     while True:
+    #         scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
+    #         try:
+    #             scanSeries = np.column_stack((scanSeries, scanList))
+    #         except NameError:
+    #             scanSeries = np.array(scanList)
+    #         next = input('Type "add" to add another line to the series, or press <Enter> to start scan.\n')
+    #         if next == 'add':
+    #             input('Remember to take images')
+    #             continue
+    #         if next == '':
+    #             break
+    #
+    #     experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+    #     np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanSeries), delimiter=',', fmt = '%s')
+    #
+    #     for scanNum, scanList in enumerate(scanSeries):
+    #         print("Next scan in 10 seconds...")
+    #         time.sleep(10)
+    #
+    #         for idx, pos in enumerate(scanList):
+    #             name = str(filename)+'_scan{}#[{}]#'.format(str(scanNum), str(idx))
+    #             experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+    #             print('setting exp params')
+    #             print('Moving to {}'.format(pos))
+    #             move_absolute(pos)
+    #             currentPos = pos
+    #             print('sleeping for travel time: ', travelTime)
+    #             time.sleep(travelTime)
+    #             AcquireAndLock(filename)
+    #
+    #         print("Waiting for newline")
+    #     print('#'*100, '\nScan complete! Moving to starting position:', scanSeries[0, 0])
+    #     move_absolute(scanSeries[0, 0])
+    #     currentPos = scanSeries[0, 0]
 
     if scanType == 'line':
 
@@ -704,9 +710,12 @@ while True:
         experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
         np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
 
+        errors = 0
         for idx, pos in enumerate(scanList):
             name = str(filename)+'#[{}]#'.format(str(idx))
+
             experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+
             print('setting exp params')
             print('Moving to {}'.format(pos))
             move_absolute(pos)
@@ -715,6 +724,8 @@ while True:
             time.sleep(travelTime)
             AcquireAndLock(filename)
         print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
+        if errors > 0:
+            print('IPC error: {} times'.format(errors))
         move_absolute(scanList[0])
         currentPos = scanList[0]
 
@@ -736,12 +747,24 @@ while True:
         experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
         pause()
         index = 0
+        errors = 0
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
                 name = str(filename)+'[{}]#({},{})#'.format(index, str(j), str(i))
                 print(pos)
-                experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+                errorCount = 0
+                while errorCount < 4:
+                    try:
+                        experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+                        break
+                    except:
+                        errorCount += 1
+                        errors += 1
+                        time.sleep(30)
+                    if errorCount == 3:
+                        pause("held up by error... Check lightfield and restart scan")
+
 
                 print('Moving to ({}, {})'.format(pos[0], pos[1]))
                 print('sleeping for travel time: ', travelTime)
@@ -762,6 +785,8 @@ while True:
             except IndexError:
                 pass
         print('#'*100, '\nScan complete! Moving to starting position:', str(xArray[0, 0])+', '+str(yArray[0, 0]))
+        if errors > 0:
+            print('IPC error: {} times'.format(errors))
         pos = (xArray[0, 0], yArray[0, 0])
         move_absolute(pos)
         currentPos = pos
