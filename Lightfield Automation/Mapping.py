@@ -648,7 +648,7 @@ experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
 comPort = 'COM8'
-filename = "f14map1"
+filename = "f17map1"
 motorSpeed = 500
 travelTime = 2
 while True:
