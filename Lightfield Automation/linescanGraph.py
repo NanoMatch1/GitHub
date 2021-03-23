@@ -21,6 +21,12 @@ peakDict = {'LA':(673,683), 'E2g':(745, 755)}
 dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
 
 
+for file, data in dataDict.items():
+    dataX, dataY = (data[:, 0], data[:, 1])
+plt.plot(dataX, dataY)
+plt.show()
+# pause()
+
 scanDict = {}
 scanDictRunning = {}
 scanNameList = []
