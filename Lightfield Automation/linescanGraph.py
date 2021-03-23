@@ -24,7 +24,7 @@ for file, data in dataDict.items():
     dataX, dataY = (data[:, 0], data[:, 1])
 plt.plot(dataX, dataY)
 plt.show()
-pause()
+# pause()
 
 scanDict = {}
 scanDictRunning = {}
