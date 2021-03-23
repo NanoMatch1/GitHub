@@ -5,6 +5,8 @@ import numpy as np
 from matplotlib.path import Path
 import matplotlib.patches as patches
 import os
+import json
+from matplotlib.widgets import Slider, Button
 
 import sys
 sys.path.insert(0, 'C:/GitHub/Raman/Raman')
@@ -12,101 +14,343 @@ from Modular_Raman_Analyser import *
 from Header_Finder import *
 
 
+def simple_background(dataDict, headerDict, dataDir, moveFiles = False, singleBG = True, viewEach = True, saveAll = False, iterate = False, normaliseRange = False, baseline = (100000, 0.001)):
+    import matplotlib
+    dataList = []
+
+    for file, data in dataDict.items():
+        print(file)
+        if "BG" in file:
+            BGbool = True
+            print('found bool')
+            BG_Y = data[:, 1]
+            BG_X = list(range(len(BG_Y)))
+            data = np.column_stack((BG_X, BG_Y))
+            if normaliseRange !=False and normaliseRange !=None:
+            #     # BG_Y = baseline_show(data, file, baseline[0], baseline[1])
+            #     # matplotlib.rc('font', size = 20)
+                BG_Y = normalise_variable(data, 'BACKGROUND', normaliseRange, baseline = False, showGraph = False)
+            #     print('BG_Y', BG_Y)
+            background = np.column_stack((BG_X, BG_Y))
+
+        else:
+            dataList.append(file)
+    try:
+        if BG_Y.any():
+            pass
+    except NameError:
+        print('Error: No background files found')
+        BGbool = False
+        print('BGbool =', BGbool)
+        return dataDict, BGbool
+
+
+    print('Test: only visible with background file')
+    for idx, file in enumerate(dataList):
+        data = dataDict[file]
+        dataY = data[:, 1]
+        dataX = data[:, 0]
+        dataX = list(range((len(dataY))))
+        data = np.column_stack((dataX, dataY))
+        if normaliseRange != False:
+            # dataY = baseline_show(data, file, baseline[0], baseline[1])
+            dataY = normalise_variable(data, file, normaliseRange, baseline = False, showGraph = False)
+        data = np.column_stack((dataX, dataY))
+
+        if iterate == True:
+            BG_Y = iterate(data, BG_Y, sensitivity = 0.1) # removes negative intensity artifacts around rayleigh from BG subtraction. Iterates over a bacground subtraction, reducing the background intensity by the sensitivity factor until the resulting subtracted data is above zero (near rayleigh)
+
+        dataYsub = dataY-BG_Y
+
+        if viewEach == True:
+            plt.cla()
+            plt.figure(figsize = (8,8))
+            plt.plot(dataX, dataY, label = file+' raw')
+            plt.plot(dataX, dataYsub, label = file+' subbed')
+            plt.plot(dataX, BG_Y, color = 'purple', label = 'Background')
+            plt.legend()
+            plt.title('Check background sub is legit: '+file)
+            plt.ion()
+            plt.show()
+            plt.draw()
+            plt.pause(0.001)
+
+        scaleFactor = 1
+        while singleBG == True:
+            scaleInput = input('Enter scaling factor, or press "enter" to continue with current scale. Type "skip" to skip this file.')
+            plt.close(1)
+            plt.close(2)
+            try:
+                if any(scaleInput):
+                    print('scaling factor = ', scaleInput)
+                    if scaleInput == "skip":
+                        break
+                    # try:
+                    #     if float(scaleFactor):
+                    #         pass
+                    # except NameError:
+                    #     scaleFactor = 1
+
+                    scaleFactor = eval(scaleInput)/scaleFactor
+                    dataYsub = dataY-(BG_Y/scaleFactor)
+
+                    plt.cla()
+                    plt.figure(figsize = (8,8))
+                    plt.ion()
+                    # plt.show()
+                    plt.plot(dataX, dataY, label = file+' raw')
+                    plt.plot(dataX, dataYsub, label = file+' subbed')
+                    plt.plot(dataX, (BG_Y/scaleFactor), color = 'purple', label = 'Background')
+                    plt.legend()
+                    plt.title('Check background sub is legit: '+file)
+                    if viewEach == True:
+                        plt.show()
+                        plt.draw()
+                        plt.pause(0.001)
+
+                elif not any(scaleInput):
+                    print('no input for:', scaleInput)
+                    break
+            except:
+                print('Command not recognised, please try again.')
+                continue
+
+        dataSub = np.column_stack((dataX, dataYsub))
+        if saveAll == True:
+            # plt.figure(figsize = (8,8))
+            # plt.plot(dataX, dataYsub, label = file+' subbed')
+            # plt.legend()
+            # plt.title(file+ 'BS')
+            os.chdir(dataDir)
+            make_dir('output/background subtracted')
+
+            # plt.savefig('output/background subtracted/{}_BS.png'.format(file[:-4]))
+            np.savetxt('output/background subtracted/{}_BS.csv'.format(file[:-4]), dataSub, delimiter=',', fmt='%s')
+            if moveFiles == True:
+                os.chdir('{}/data'.format(dataDir))
+                make_dir('pre-BS')
+                move_file(file, '{}/'.format(os.getcwd()), 'pre-BS/')
+
+        try:
+            dataDictSub[file] = dataSub
+        except NameError:
+            dataDictSub = {file:dataSub}
+
+
+    dataDict = dataDictSub
+    return dataDict, BGbool
+
+
 #set the directory to the desired data directory
 #Hint: Right-click in the address bar in File Explorer and copy the address
 # os.chdir(r'2D_map_data')
 
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-2-21 Maps and scans\quickmap"
+fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-9-21 Duet calibrations\Map2"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
-dataDir = r'{}\data'.format(fileDir)
-
+dataDir = r'{}'.format(fileDir)
+BG_sub = True
 #check the current directory.
 os.chdir(dataDir)
+if not os.path.exists(r'{}\data\cubed'.format(dataDir)):
+    dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
+    # print('hi')
+    # pause()
+    # if BG_sub == True:
+    #     simple_background(dataDict, headerDict, dataDir, moveFiles = False, singleBG = False, viewEach = False, saveAll = True, iterate = False, normaliseRange = (100, 200, 700, 720), baseline = (100000, 0.001))
+    # pause()
+    files = [key for key in dataDict.keys()]
+    basefile = files[0][:files[0].index('(')-1]
 
-dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
+    #dir_path = "./data/" #Path to data directory
+    # basefile = "f1map1" # Base file name
+    ext = ".csv" # Extension
+    '''##################### enter array dims here'''
+    arrayDims = (17,8)
+    flatArray = []
+    posList = []
+    orderedPosList = []
+    filemap = r'C:\GitHub\Lightfield Automation\ScanLists\{}_list.json'.format(basefile)
 
-#dir_path = "./data/" #Path to data directory
-basefile = "f3mapquick" # Base file name
-ext = ".csv" # Extension
+    with open(filemap) as json_file:
+        mapDict = json.load(json_file)
 
-for file, data in dataDict.items():
-    posIdx = file[file.index('(')+1:file.index(')')]
-    print(posIdx)
-    # pos = float(posIdx[:posIdx.index(',')]), float(posIdx[posIdx.index(',')+1:])
-    # print(str(pos))
-    try:
-        dataPosDict[posIdx] = data
-    except NameError:
-        dataPosDict = {posIdx: data}
+    for x in list(range(arrayDims[0]+1)):
+        for y in list(range(arrayDims[1]+1)):
+            orderedPosList.append('{},{}'.format(mapDict['({}, {})'.format(x, y)][0], mapDict['({}, {})'.format(x, y)][1]))
+    # posList = [mapDict['{},{}'.format(x, y)] for x in list(range(arrayDims[0]+1)) for y in list(range(arrayDims[1]+1))]
 
-print(len(dataPosDict))
+    # print(orderedPosList)
+    # pause()
 
-''' Need to generate a 3D array or "cube" (x, y, spectra)'''
-# import or generate array/scan dimensions
+    for file, data in dataDict.items():
+        posIdx = file[file.index('(')+1:file.index(')')]
+        print(posIdx)
+        # posList.append(posIdx)
+        basefile = file[:file.index('(')-1]
+        # pos = float(posIdx[:posIdx.index(',')]), float(posIdx[posIdx.index(',')+1:])
+        # print(str(pos))
+        try:
+            dataPosDict[posIdx] = data
+        except NameError:
+            dataPosDict = {posIdx: data}
 
-xScan = list(range(31))
-yScan = list(range(21))
 
-dat = []
-for idx, x in enumerate(xScan):
-    rowX = []
-    rowY = []
 
-    for y in yScan:
-        rowX.append(x)
-        rowY.append(y)
-        data = dataPosDict[str(x)+'.0,'+str(y)+'.0']
-        dat.append(data[:, 1])
+    for pos in orderedPosList:
+        flatArray.append(dataPosDict[pos][:, 1])
 
-    try:
-        xArray = np.column_stack((xArray, rowX))
-        yArray = np.column_stack((yArray, rowY))
-        # dataArray = np.column_stack((dataArray, dat))
-    except NameError:
-        xArray = np.array(rowX).astype('float')
-        yArray = np.array(rowY).astype('float')
-        # dataArray = np.array(dat).astype(float)
+    flatArrayFinal = []
+    # for spec in flatArray:
+    #     flatArrayFinal.append()
+    # print(posList)
+    # print(dataPosDict)
+    yflat = np.array(flatArray).flatten()
+    print(yflat)
+    print(len(yflat))
 
-# print(xArray, yArray, dataArray)
-print(len(dat))
+    cube = np.reshape(yflat, (arrayDims[0]+1,arrayDims[1]+1,1340))
+    print(cube.shape)
+    # pause()
+    # print(len(dataPosDict))
 
-# dataArray = dataArray[:, 1]
-# print(dataArray)
+    ''' Need to generate a 3D array or "cube" (x, y, spectra)'''
+    # import or generate array/scan dimensions
+
+
+    # dat = []
+    # for idx, x in enumerate(xScan):
+    #     rowX = []
+    #     rowY = []
+    #
+    #     for y in yScan:
+    #         rowX.append(x)
+    #         rowY.append(y)
+    #         data = dataPosDict[str(x)+'.0,'+str(y)+'.0']
+    #         dat.append(data[:, 1])
+    #
+    #     try:
+    #         xArray = np.column_stack((xArray, rowX))
+    #         yArray = np.column_stack((yArray, rowY))
+    #         # dataArray = np.column_stack((dataArray, dat))
+    #     except NameError:
+    #         xArray = np.array(rowX).astype('float')
+    #         yArray = np.array(rowY).astype('float')
+    # #         # dataArray = np.array(dat).astype(float)
+    #
+    # print(basefile)
+    # # pause()
+
+        # for key, pos in map.items():
+        #     mapDict[key]
+
+
+
+    # print(posList)
+    # flatArray = []
+    # for file, data in dataDict.items():
+    #     for x in posList:
+    #         pos = '({},{})'.format(x[0],x[1])
+    #         print(pos)
+            # if
+    # newlist = []
+    # pause()
+    # for x in list(range(arrayDims[0]+1)):
+    #     for y in list(range(arrayDims[1]+1)):
+    #         newlist.append(mapDict['({}, {})'.format(x, y)])
+    # print(newlist)
+    # pause()
+    # # for pos in posList:
+    # # xScan = list(range(20))
+    # # yScan = list(range(24))
+    # print(flatArray)
+    # pause()
+    #
+    # print(mapDict)
+    # xArray = []
+    # yArray = []
+    # for index, pos in mapDict.items():
+    #     xArray.append()
+    # print(mapDict['(0, 0)'])
+    # pause()
+    # # print(xArray, yArray, dataArray)
+    # print(len(dat))
+
+    # dataArray = dataArray[:, 1]
+    # print(dataArray)
+    # pause()
+
+    #
+    # # cube = np.stack((xArray,yArray,dataArray))
+    # xflat = xArray.flatten()
+    # yflat = yArray.flatten()
+    # dataArray = np.array(dat).astype('float')
+    # dataflat = dataArray.flatten()
+    # print(len(dataflat))
+    # # pause()
+    #
+    # print(xflat, yflat,dataflat)
+    # # cube = np.append(xflat,dataArray)
+    #
+    #
+    # ''' dataArray = []
+    # for i in list(range(31)):
+    #     for j in list(range(21)):
+    #         dataArray.append(dataPosDict[xArray[i,j],yArray[i,j]))'''
+    # cube = np.reshape(dataflat, (31,21,1340))
+    #
+    #
+    # pause('cubed')
+
+
+    # filenames = [basefile + "_" + str(i) + ext for i in range(1,2501)]
+    # df = pd.concat([pd.read_table(f, delim_whitespace=True, index_col=0, header=None, names=[None, str(i+1)]).transpose() for i, f in enumerate(filenames)])
+    # df.head(10)
+
+    #
+    # cube = df.values.reshape(50,50,1600).transpose(1,0,2)
+    # print(cube.shape)
+    #
+    print('Number of spectra =',cube.shape[0]*cube.shape[1])
+    # Check the cube is transposed correctly
+    print(cube[0,0,:])
+    plt.plot(list(range(1340)), cube[0,0,:])
+    plt.show()
+    yflat = list(yflat)
+    # for x in yflat:
+    #     print(x)
+    flatArrayFinal = [[float(x)] for x in yflat]
+    print(flatArrayFinal)
+    pause('Press <Enter> to save cube data file')
+    make_dir('data/cubed')
+
+    with open('{}/data/cubed/{}_cube.csv'.format(dataDir, basefile), 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=',')
+        writer.writerows(flatArrayFinal)
+    np.savetxt('data/cubed/{}_cube_dims.txt'.format(basefile), (arrayDims[0], arrayDims[1], 1340), delimiter=',', fmt = '%s')
+
 # pause()
+if os.path.exists(r'{}\data\cubed'.format(dataDir)):
+    files = [file for file in os.listdir('{}\data\cubed'.format(dataDir)) if file.endswith('.csv')]
+    with open(r'{}\data\cubed\{}'.format(dataDir, files[0]), 'rt') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        data = list(reader)
+    txtFile = [file for file in os.listdir('{}\data\cubed'.format(dataDir)) if file.endswith('.txt')]
+    with open(r'{}\data\cubed\{}'.format(dataDir, txtFile[0]), 'rt') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        txtFile = list(reader)
 
+    # dims = [txtFile[x][0] for x in list(range(len(txtFile)))]
+    dims = (int(txtFile[0][0])+1,int(txtFile[1][0])+1,int(txtFile[2][0]))
+    print(dims)
+    # pause()
+    yflat = []
+    for x in list(range(len(data))):
+        yflat.append(data[x][0])
+    yflat = np.array(yflat).astype(float)
+    cube = np.reshape(yflat, dims)
 
-# cube = np.stack((xArray,yArray,dataArray))
-xflat = xArray.flatten()
-yflat = yArray.flatten()
-dataArray = np.array(dat).astype('float')
-dataflat = dataArray.flatten()
-print(len(dataflat))
+print(cube)
 # pause()
-
-print(xflat, yflat,dataflat)
-# cube = np.append(xflat,dataArray)
-
-
-''' dataArray = []
-for i in list(range(31)):
-    for j in list(range(21)):
-        dataArray.append(dataPosDict[xArray[i,j],yArray[i,j]))'''
-cube = np.reshape(dataflat, (31,21,1340))
-
-
-pause('cubed')
-
-
-# filenames = [basefile + "_" + str(i) + ext for i in range(1,2501)]
-# df = pd.concat([pd.read_table(f, delim_whitespace=True, index_col=0, header=None, names=[None, str(i+1)]).transpose() for i, f in enumerate(filenames)])
-# df.head(10)
-
-#
-# cube = df.values.reshape(50,50,1600).transpose(1,0,2)
-# print(cube.shape)
-#
-# print('Number of spectra =',cube.shape[0]*cube.shape[1])
-
 # baseline removal
 
 # import sys
@@ -190,18 +434,66 @@ Mouse over on image to see pixel coordinates.
 
 Go slow! Use arrow keys to step for more control.'''
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-img = ax.imshow(baselined[:,:,1194], interpolation='bilinear', cmap='hot')
-color_bar = plt.colorbar(img)
-
-def update_im(idx):
-    img.set_data(baselined[:,:,idx-1])
-    fig.canvas.draw()
-    return "Wave number: " + str(df.columns[(idx-1)+lp])
-interact(update_im, idx=(1,baselined.shape[2],1));
 
 
+# a = np.random.random((16, 16))
+# plt.imshow(a, cmap='hot', interpolation='nearest')
+# plt.show()
+
+# figure axis setup
+fig, ax = plt.subplots()
+fig.subplots_adjust(bottom=0.15)
+idx = 678
+# display initial image
+im_h = ax.imshow(cube[:, :, idx], cmap='hot', interpolation='nearest')
+color_bar = plt.colorbar(im_h)
+
+# setup a slider axis and the Slider
+ax_wavelength = plt.axes([0.23, 0.02, 0.56, 0.04])
+slider_wavenumber = Slider(ax_wavelength, 'Wavenumber', 0, cube.shape[2]-1, valinit=idx)
+
+axpos1 = plt.axes([0.05, 0.1, 0.05, 0.03])
+axpos2 = plt.axes([0.93, 0.1, 0.05, 0.03])
+
+button1 = Button(axpos1, '<', color='w', hovercolor='b')
+button2 = Button(axpos2, '>', color='w', hovercolor='b')
+
+def forward(vl):
+    pos = slider_wavenumber.val
+    slider_wavenumber.set_val(slider_wavenumber.val+1)
+
+def backward(vl):
+    pos = slider_wavenumber.val
+    slider_wavenumber.set_val(slider_wavenumber.val-1)
+
+
+# update the figure with a change on the slider
+def update_wavenumber(val):
+    idx = int(round(slider_wavenumber.val))
+    im_h.set_data(cube[:, :, idx])
+
+
+idx = slider_wavenumber.on_changed(update_wavenumber)
+idx = button1.on_clicked(backward)
+idx = button2.on_clicked(forward)
+plt.show()
+
+#
+# fig = plt.figure()
+# ax = fig.add_subplot(1, 1, 1)
+# img = ax.imshow(cube[:,:,678], interpolation='bilinear', cmap='hot')
+# color_bar = plt.colorbar(img)
+# dataX = list(range(1340))
+# # plt.show()
+#
+# def update_im(idx):
+#     img.set_data(cube[:,:,idx-1])
+#     fig.canvas.draw()
+#     return "Wave number: " + str(dataX[(idx-1)])
+#
+# update_im(idx=678)
+# fig.show()
+pause()
 
 # ENTER WAVE NUMBER INDEX OF INTEREST
 w = 1192

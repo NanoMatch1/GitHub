@@ -13,7 +13,7 @@ from System.Threading import AutoResetEvent
 # Import c compatible List and String
 from System import String
 from System.Collections.Generic import List
-
+import math
 # config file save
 import json
 
@@ -210,7 +210,7 @@ def runLinescan(lineScanList, acquisitionTime):
     quit()
 
 
-def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
+def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', currentMode = "raman"):
     acquireTime = None
 
     try:
@@ -232,6 +232,31 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                 home = currentPos
             if command == 'gohome':
                 print('moving to '+str(home))
+            if command == 'ramanmode':
+                currentMode = ramanMode(currentMode)
+            if command == 'imagemode':
+                currentMode = imageMode(currentMode)
+            if command == 'adjustpower':
+                adjustPower()
+            if command == 'quit':
+                s.close()
+            if command == 'gcode':
+                command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                send_gcode(str(command))
+            if command == 'light':
+                while True:
+                    pwr = input('Enter power from 0 to 150.')
+                    try:
+                        pwr = int(pwr)
+                        if pwr <= 255 and pwr >= 0:
+                            break
+                    except:
+                        pass
+                lightOn(pwr)
+
+            if command == 'focus':
+                z_focus()
+
             if command == 'linescan':
                 lineStart, lineFinish = None, None
                 print('Preparing for linescan:')
@@ -246,7 +271,35 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                     if command == 'finish':
                         lineFinish = currentPos
                         print("Finish position entered:", lineFinish)
+
+                    if command == 'gcode':
+                        command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                        send_gcode(str(command))
+                    if command == 'quit':
+                        s.close()
+                    if command == 'ramanmode':
+                        currentMode = ramanMode(currentMode)
+                    if command == 'imagemode':
+                        currentMode = imageMode(currentMode)
+                    if command == 'adjustpower':
+                        currentMode = adjustPower()
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
+
+                    if command == 'focus':
+                        z_focus()
+
                     if lineStart and lineFinish:
+                        lineVector = (float(lineFinish[0])-float(lineStart[0]), float(lineFinish[1])-float(lineStart[1]))
+                        print('Line is {} microns long.'.format(math.sqrt((lineVector[0]**2)+(lineVector[1]**2))))
                         break
                 while True:
                     lineScanRes = input("Enter number of points on line to scan:\n")
@@ -273,11 +326,40 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
 
                 print("Linescan ready:")
                 print(lineScanList)
+                scanTime = len(lineScanList)*acquisitionTime
+                print("Estimated completion time: {} hours, {} minutes".format(scanTime/360,scanTime/60))
                 print("Returning to start position.")
                 currentPos = interpret_move(currentPos, lineScanList[0])
                 move_absolute(lineScanList[0])
-                input("Press 'Enter' to run linescan. Close console to quit.")
-                return lineScanList, acquisitionTime, filename
+                while True:
+                    com3 = input("Press 'Enter' to run linescan, or enter a command. Close console to quit.\n")
+                    if command == 'gcode':
+                        send_gcode(str(command))
+
+                    if com3 == 'ramanmode':
+                        currentMode = ramanMode(currentMode)
+                    if com3 == 'imagemode':
+                        currentMode = imageMode(currentMode)
+                    if com3 == 'adjustpower':
+                        currentMode = adjustPower()
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
+
+                    if command == 'focus':
+                        z_focus()
+                    if com3 == '':
+                        break
+                if currentMode == 'image':
+                    currentMode == ramanMode(currentMode)
+                return lineScanList, acquisitionTime, filename, currentPos
 
             if command == 'map':
                 mapStart, mapFinish = None, None
@@ -295,6 +377,35 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                     if command == 'finish':
                         mapFinish = currentPos
                         print("Finish position entered:", mapFinish)
+
+                    if command == 'gcode':
+                        command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                        send_gcode(str(command))
+
+
+                    if command == 'quit':
+                        s.close()
+                    print('currentMode =', currentMode)
+                    if command == 'ramanmode':
+                        currentMode = ramanMode(currentMode)
+                    if command == 'imagemode':
+                        currentMode = imageMode(currentMode)
+                    if command == 'adjustpower':
+                        currentMode = adjustPower()
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
+
+                    if command == 'focus':
+                        z_focus()
+
                     if mapStart and mapFinish:
                         break
                 while True:
@@ -332,39 +443,150 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename'):
                 filename = filename+r' #{}x{}#{}s#'.format(len(xArray[0, :]), len(yArray[:, 0]), acquisitionTime)
                 print('Estimated run time: {} sec, or \n{} min, or \n{} hours'.format(runTime, runTime/60, runTime/3600))
                 while True:
-                    com3 = input("Press 'Enter' to run linescan. Close console to quit.")
+                    com3 = input("Press 'Enter' to run map, or enter a command. Close console to quit.\n")
                     if com3 == 'show':
                             move_absolute(mapHome)
                             move_absolute(mapEndPos[0], mapHome[0])
                             move_absolute(mapEndPos)
                             move_absolute(mapHome[0], mapEndPos[1])
                             move_absolute(mapHome)
+                    if com3 == 'ramanmode':
+                        currentMode = ramanMode(currentMode)
+                    if com3 == 'imagemode':
+                        currentMode = imageMode(currentMode)
+                    if com3 == 'adjustpower':
+                        currentMode = adjustPower()
+                    if command == 'gcode':
+                        command = input('Enter gcode to send. WARNING - DONT BREAK SOMETHING')
+                        send_gcode(str(command))
+                    if command == 'light':
+                        while True:
+                            pwr = input('Enter power from 0 to 150.')
+                            try:
+                                pwr = int(pwr)
+                                if pwr <= 255 and pwr >= 0:
+                                    break
+                            except:
+                                pass
+                        lightOn(pwr)
 
-                    else:
+                    if command == 'focus':
+                        z_focus()
+
+                    if com3 == '':
                         break
+                if currentMode == 'image':
+                    currentMode == ramanMode(currentMode)
                 return xArray, yArray, acquisitionTime, filename
 
+def adjustPower(power = None):
+    if power =='max':
+        s.write(str.encode('T1\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        s.write(str.encode('G1 E5\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        return
+    if power == 'min':
+        s.write(str.encode('T1\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        s.write(str.encode('G1 E-5\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        return
+    elif power != 'min' or power != 'max':
+        while True:
+            power = input('Enter power (-6 to 6)\n')
+            try:
+                power = float(power)
+                s.write(str.encode('T1\n'))
+                grbl_out = s.readline() # Wait for grbl response with carriage return
+                s.write(str.encode('G1 E'+str(power)+'\n'))
+                grbl_out = s.readline() # Wait for grbl response with carriage return
+                break
+            except:
+                power = input('Incorrect value - please enter a float.\n')
+    return
+
+def z_focus():
+    s.write(str.encode('G91\n'))
+    while True:
+        zStep = input('Enter focus step in microns. Type "done" to break loop.\n')
+        try:
+            float(zStep)
+            s.write(str.encode('G1 Z{}\n'.format(zStep)))
+            grbl_out = s.readline()
+        except:
+            if zStep == 'done':
+                s.write(str.encode('G90\n'))
+                break
+            else:
+                print('Number not recognised - please enter a float.')
 
 
+def lightOn(power = 255):
+    s.write(str.encode('M106 P2 S{}\n'.format(power)))
+    grbl_out = s.readline() # Wait for grbl response with carriage return
 
-def initializeGRBL(motorSpeed = 1000):
+def ramanMode(currentMode):
+    if currentMode == 'image':
+        s.write(str.encode('T0\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        s.write(str.encode('G1 E-120\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        adjustPower(power = 'max')
+    else:
+        OVR = input('Error - already in Raman mode. Type "OVERWRITE" to change anyway, or enter to continue.')
+        if OVR == 'OVERWRITE':
+            s.write(str.encode('T0\n'))
+            grbl_out = s.readline() # Wait for grbl response with carriage return
+            s.write(str.encode('G1 E-120\n'))
+            grbl_out = s.readline() # Wait for grbl response with carriage return
+            adjustPower(power = 'max')
+    currentMode = "raman"
+    lightOn(0)
+    return currentMode
+
+def imageMode(currentMode):
+    if currentMode == 'raman':
+        s.write(str.encode('T0\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        s.write(str.encode('G1 E120\n'))
+        grbl_out = s.readline() # Wait for grbl response with carriage return
+        adjustPower(power = 'min')
+    else:
+        OVR = input('Error - already in Image mode. Type "OVERWRITE" to change anyway, or enter to continue.')
+        if OVR == 'OVERWRITE':
+            s.write(str.encode('T0\n'))
+            grbl_out = s.readline() # Wait for grbl response with carriage return
+            s.write(str.encode('G1 E120\n'))
+            grbl_out = s.readline() # Wait for grbl response with carriage return
+            adjustPower(power = 'min')
+    currentMode = "image"
+    lightOn()
+    return currentMode
+
+def initializeGRBL(motorSpeed = 1000, comPort = 'COM8'):
     # Open grbl serial port
-    s = serial.Serial('COM6',115200)
+    s = serial.Serial(comPort ,115200)
 
     # Wake up grbl
-    s.write(str.encode("hello"))
+    # s.write(str.encode("hello"))
     time.sleep(2)   # Wait for grbl to initialize
     s.flushInput()  # Flush startup text in serial input
 
     # Stream g-code to grbl
     s.write(str.encode('G90 F{}'.format(motorSpeed)+'\n'))
     grbl_out = s.readline() # Wait for grbl response with carriage return
+    # s.write(str.encode('M350 E256:1\n')) # sets microstepping of power controller to 1 # NOTE: redundant if config file changed
+    # grbl_out = s.readline() # Wait for grbl response with carriage return
     print('Moving in absolute coordinates : ' + str(grbl_out.strip()))
 
     commandDict = {"quit": "quit", "sethome": "sethome"}
-    commandList = ['quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map']
-    currentPos = (0,0)
+    commandList = ['focus','light','gcode','quit','sethome','linescan', 'gohome', 'start', 'finish', 'acquire', 'traveltime', 'filename', 'map', 'imagemode', 'ramanmode', 'adjustpower']
 
+
+    currentPos = (0,0)
+    s.write(str.encode('G92 X0 Y0 Z0 E0\n')) # sets absolute coordinates for all axes to zero
+    grbl_out = s.readline() # Wait for grbl response with carriage return
     return s, currentPos, commandDict, commandList
 
 def generate_2D_arrays(start, finish, resolution):
@@ -416,7 +638,7 @@ def generate_2D_arrays(start, finish, resolution):
 
 
 
-## '''LightField Section'''
+# '''LightField Section'''
 auto = Automation(True, List[String]())
 
 experiment = auto.LightFieldApplication.Experiment
@@ -425,65 +647,124 @@ acquireCompleted = AutoResetEvent(False)
 experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
-
-filename = "f3mapquick"
-motorSpeed = 1000
+comPort = 'COM8'
+filename = "f18line1"
+motorSpeed = 500
 travelTime = 2
-inp = input("Change settings, then press <Enter> to continue")
+while True:
+    currentMode = input('Enter current mode: "raman" or "image":\n')
+    if currentMode == "raman" or currentMode =='image':
+        break
+    else:
+        print('Error - please enter "Raman" or "Image".')
 
-s, currentPos, commandDict, commandList = initializeGRBL(motorSpeed)
+inp = input("Change directory and run tests, then press <Enter> to continue")
+
+s, currentPos, commandDict, commandList = initializeGRBL(motorSpeed, comPort)
 
 
 while True:
     scanType = None
-    scanType = input('Specify collection type: "line", or "map".')
+    scanType = input('Specify collection type: "line", "series", or "map".')
+    # if scanType == 'series':
+    #
+    #     while True:
+    #         scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
+    #         try:
+    #             scanSeries = np.column_stack((scanSeries, scanList))
+    #         except NameError:
+    #             scanSeries = np.array(scanList)
+    #         next = input('Type "add" to add another line to the series, or press <Enter> to start scan.\n')
+    #         if next == 'add':
+    #             input('Remember to take images')
+    #             continue
+    #         if next == '':
+    #             break
+    #
+    #     experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
+    #     np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanSeries), delimiter=',', fmt = '%s')
+    #
+    #     for scanNum, scanList in enumerate(scanSeries):
+    #         print("Next scan in 10 seconds...")
+    #         time.sleep(10)
+    #
+    #         for idx, pos in enumerate(scanList):
+    #             name = str(filename)+'_scan{}#[{}]#'.format(str(scanNum), str(idx))
+    #             experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+    #             print('setting exp params')
+    #             print('Moving to {}'.format(pos))
+    #             move_absolute(pos)
+    #             currentPos = pos
+    #             print('sleeping for travel time: ', travelTime)
+    #             time.sleep(travelTime)
+    #             AcquireAndLock(filename)
+    #
+    #         print("Waiting for newline")
+    #     print('#'*100, '\nScan complete! Moving to starting position:', scanSeries[0, 0])
+    #     move_absolute(scanSeries[0, 0])
+    #     currentPos = scanSeries[0, 0]
+
     if scanType == 'line':
 
-        scanList, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
+        scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
         experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
         np.savetxt('ScanLists/{}_list.meta'.format(filename), (scanList), delimiter=',', fmt = '%s')
 
+        errors = 0
         for idx, pos in enumerate(scanList):
             name = str(filename)+'#[{}]#'.format(str(idx))
+
             experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+
             print('setting exp params')
             print('Moving to {}'.format(pos))
-            # currentPos, travelTime = update_pos(pos)
-            # travelTime = (float(max(abs(currentPos[0]-pos[0]), abs(currentPos[1]-pos[1]))))*.1
-            # if travelTime <= 1:
-            #     travelTime = 1
             move_absolute(pos)
             currentPos = pos
-            # time.sleep(acquisitionTime)
-            # print("Linescan complete")
             print('sleeping for travel time: ', travelTime)
             time.sleep(travelTime)
             AcquireAndLock(filename)
         print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
+        if errors > 0:
+            print('IPC error: {} times'.format(errors))
         move_absolute(scanList[0])
         currentPos = scanList[0]
 
     if scanType == 'map':
             # try:
-        xArray, yArray, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename)
+        xArray, yArray, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename, currentMode)
 
         posDict = {}
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
-                pos = (xArray[i, j], yArray[i, j])
-                posDict[str((i,j))] = pos
+                pos = (yArray[i, j], xArray[i, j])
 
+                posDict['{},{}'.format(i,j)] = '({},{})'.format(str(pos[0]), str(pos[1]))
+
+# experiment.GetValue(ExperimentSettings.FileNameGenerationDirectory)))
         with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
             json.dump(posDict, jsonfile)
 
         experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
         pause()
+        index = 0
+        errors = 0
         for i in list(range(len(xArray[:, 0]))):
             for j in list(range(len(xArray[0, :]))):
                 pos = (xArray[i, j], yArray[i, j])
-                name = str(filename)+'#({},{})#'.format(str(pos[0]), str(pos[1]))
+                name = str(filename)+'[{}]#({},{})#'.format(index, str(j), str(i))
                 print(pos)
-                experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+                errorCount = 0
+                while errorCount < 4:
+                    try:
+                        experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+                        break
+                    except:
+                        errorCount += 1
+                        errors += 1
+                        time.sleep(30)
+                    if errorCount == 3:
+                        pause("held up by error... Check lightfield and restart scan")
+
 
                 print('Moving to ({}, {})'.format(pos[0], pos[1]))
                 print('sleeping for travel time: ', travelTime)
@@ -491,6 +772,7 @@ while True:
                 currentPos = pos
                 time.sleep(travelTime)
                 AcquireAndLock(filename)
+                index += 1
             print('linebreak reset. Sleeping for 10 seconds')
             try:
                 pos = (xArray[i, j-j], yArray[i, j-j])
@@ -503,6 +785,8 @@ while True:
             except IndexError:
                 pass
         print('#'*100, '\nScan complete! Moving to starting position:', str(xArray[0, 0])+', '+str(yArray[0, 0]))
+        if errors > 0:
+            print('IPC error: {} times'.format(errors))
         pos = (xArray[0, 0], yArray[0, 0])
         move_absolute(pos)
         currentPos = pos
