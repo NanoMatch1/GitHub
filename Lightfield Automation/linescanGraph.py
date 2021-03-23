@@ -1,16 +1,16 @@
 import sys
-# sys.path.insert(0, 'C:/GitHub/Raman/Raman')
-sys.path.insert(0, r'C:\Users\sjbrooke\github\Raman')
+sys.path.insert(0, 'C:/GitHub/Raman/Raman')
+# sys.path.insert(0, r'C:\Users\sjbrooke\github\Raman')
 from Modular_Raman_Analyser import *
 from Header_Finder import *
-
+import matplotlib.pyplot as plt
 import numpy as np
 
-fileDir = r"H:\PhD\Raman\2021\3-9-21 Duet calibrations\Map1"
+fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-14-21 Maps and lines\f16/"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
 # dataDir = '{}\data'.format(fileDir)
-organise_files(fileDir = fileDir, report = True)
-pause()
+# organise_files(fileDir = fileDir, report = True)
+# pause()
 # process_files(fileDir = fileDir, avgFrames = True, normalise = False, report = True, ignoreWarnings = True)
 
 
@@ -18,6 +18,7 @@ pause()
 
 peakDict = {'LA':(673,683), 'E2g':(745, 755)}
 
+<<<<<<< HEAD
 dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
 
 
@@ -87,6 +88,110 @@ for key, item in scanDict.items():
     # plt.show()
 plt.legend()
 plt.show()
+=======
+def make_scanList(fileDir):
+    peakDict = {'LA':(673,683), 'E2g':(745, 755)}
+    dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
+
+
+    scanDict = {}
+    scanDictRunning = {}
+    scanNameList = []
+    scanGroup = -1
+    runningDict = {}
+    for file, data in dataDict.items():
+        scanName = file[:file.index('#')]
+        print(scanName)
+        # if not scanName in scanNameList:
+        #     scanNameList.append(scanName)
+        scanIndex = file[file.index('#')+2:]
+        scanIndex = scanIndex[:scanIndex.index('#')-1]
+        print(scanIndex)
+        if scanName == scanGroup:
+            runningDict[scanIndex] = data
+        else:
+            if scanGroup != -1:
+                scanDict[scanGroup] = runningDict
+            scanGroup = scanName
+            runningDict = {}
+            runningDict[scanIndex] = data
+            print(runningDict)
+    scanDict[scanGroup] = runningDict
+    return scanDict
+
+
+def plot_lines(fileDir):
+    peakDict = {'LA':(673,683), 'E2g':(745, 755)}
+    dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
+
+
+    scanDict = {}
+    scanDictRunning = {}
+    scanNameList = []
+    scanGroup = -1
+    runningDict = {}
+    for file, data in dataDict.items():
+        scanName = file[:file.index('#')]
+        print(scanName)
+        # if not scanName in scanNameList:
+        #     scanNameList.append(scanName)
+        scanIndex = file[file.index('#')+2:]
+        scanIndex = scanIndex[:scanIndex.index('#')-1]
+        print(scanIndex)
+        if scanName == scanGroup:
+            runningDict[scanIndex] = data
+        else:
+            if scanGroup != -1:
+                scanDict[scanGroup] = runningDict
+            scanGroup = scanName
+            runningDict = {}
+            runningDict[scanIndex] = data
+            print(runningDict)
+    scanDict[scanGroup] = runningDict
+
+        #
+        # try:
+        #     scanDict[str(scanName+scanIndex)] = data
+        # except NameError:
+        #     scanDict = {str(scanName)+str(scanIndex): data}
+    maxDict = {}
+    for key, item in scanDict.items():
+
+        # print('filename, ',key, 'scan indexes', item)
+
+        E2gList = []
+        LAlist = []
+        for scanIdx in list(range(len(item))):
+            data = item[str(scanIdx)]
+            dataX, dataY = (data[:, 0], data[:, 1])
+            E2g = max(dataY[745:755])
+            # LA = peakDict['LA']
+            LA = max(dataY[673:683])
+            E2gList.append(E2g)
+            LAlist.append(LA)
+
+        # for fileIndex, data in item.items():
+        #     dataX = data[:, 0]
+        #     dataY = data[:, 1]
+        #     E2g = max(dataY[743:756]) # this works for pixels only - use find_nearest() for calibrated axes
+        #     E2gList.append(E2g)
+            # print('index:', fileIndex, 'data:', data)
+            # if int(fileIndex) < 10:
+            #     plt.plot(data[:, 0], data[:, 1], label = (str(key)+str(fileIndex)))
+            #     count += 1
+        plt.plot(list(range(len(E2gList))), E2gList, label = key+'-E2g')
+        plt.plot(list(range(len(LAlist))), LAlist, label = key+'-LA')
+        E2gList = []
+        # plt.show()
+    plt.legend()
+    plt.show()
+
+plot_lines(fileDir)
+
+while True:
+    scanDict = make_scanList(fileDir)
+    time.sleep(10)
+>>>>>>> c781fa2df46b142d860160b9bcdfe8bbc5bf6c1c
 
 
 
