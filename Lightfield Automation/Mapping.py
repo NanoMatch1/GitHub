@@ -335,7 +335,11 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                     com3 = input("Press 'Enter' to run linescan, or enter a command. Close console to quit.\n")
                     if command == 'gcode':
                         send_gcode(str(command))
-
+                    if command == 'focus':
+                        z_focus()
+                    if command == 'filename':
+                        filename = input("Enter filename:\n")
+                        filename = str(filename)
                     if com3 == 'ramanmode':
                         currentMode = ramanMode(currentMode)
                     if com3 == 'imagemode':
