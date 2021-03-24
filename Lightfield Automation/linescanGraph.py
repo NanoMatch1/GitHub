@@ -1,25 +1,32 @@
 import sys
-sys.path.insert(0, 'C:/GitHub/Raman/Raman')
+# sys.path.insert(0, 'C:/GitHub/Raman/Raman')
 # sys.path.insert(0, r'C:\Users\sjbrooke\github\Raman')
+sys.path.insert(0, r'C:\Users\sjbro\github\Raman')
 from Modular_Raman_Analyser import *
 from Header_Finder import *
 import matplotlib.pyplot as plt
 import numpy as np
 
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-14-21 Maps and lines\f16/"
+fileDir = r"D:\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-23-21 scans\f19/"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
 # dataDir = '{}\data'.format(fileDir)
 # organise_files(fileDir = fileDir, report = True)
 # pause()
 # process_files(fileDir = fileDir, avgFrames = True, normalise = False, report = True, ignoreWarnings = True)
 
+def onclick(event):
+    print('%s click: button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %('double' if event.dblclick else 'single', event.button,event.x, event.y, event.xdata, event.ydata))
+    spec.set_data(list(range(len(cube[round(event.xdata), round(event.ydata), :]))), cube[round(event.xdata), round(event.ydata), :])
+    spec.set_ylim(min(cube[round(event.xdata), round(event.ydata), 600:]), max(cube[round(event.xdata), round(event.ydata), 600:]))
+
 
 # os.chdir(dataDir)
 
 peakDict = {'LA':(673,683), 'E2g':(745, 755)}
 
-<<<<<<< HEAD
+
 dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
+
 
 
 for file, data in dataDict.items():
@@ -57,6 +64,12 @@ scanDict[scanGroup] = runningDict
     #     scanDict[str(scanName+scanIndex)] = data
     # except NameError:
     #     scanDict = {str(scanName)+str(scanIndex): data}
+
+
+fig, (ax1, ax2) = plt.subplots(1,2, figsize = (12,6), gridspec_kw={'width_ratios': [1, 1]})
+fig.subplots_adjust(bottom=0.15)
+cid = fig.canvas.mpl_connect('button_press_event', onclick)
+
 maxDict = {}
 for key, item in scanDict.items():
 
@@ -82,13 +95,14 @@ for key, item in scanDict.items():
         # if int(fileIndex) < 10:
         #     plt.plot(data[:, 0], data[:, 1], label = (str(key)+str(fileIndex)))
         #     count += 1
-    plt.plot(list(range(len(E2gList))), E2gList, label = key+'-E2g')
-    plt.plot(list(range(len(LAlist))), LAlist, label = key+'-LA')
+    ax1.plot(list(range(len(E2gList))), E2gList, label = key+'-E2g')
+    ax1.plot(list(range(len(LAlist))), LAlist, label = key+'-LA')
     E2gList = []
     # plt.show()
+ax2.plot(dataX, dataY, title = filename)
 plt.legend()
 plt.show()
-=======
+
 def make_scanList(fileDir):
     peakDict = {'LA':(673,683), 'E2g':(745, 755)}
     dataDict, headerDict = load_files(dir = fileDir, viewGraph = False)
@@ -191,7 +205,7 @@ plot_lines(fileDir)
 while True:
     scanDict = make_scanList(fileDir)
     time.sleep(10)
->>>>>>> c781fa2df46b142d860160b9bcdfe8bbc5bf6c1c
+
 
 
 
