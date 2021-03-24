@@ -332,19 +332,18 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 currentPos = interpret_move(currentPos, lineScanList[0])
                 move_absolute(lineScanList[0])
                 while True:
-                    com3 = input("Press 'Enter' to run linescan, or enter a command. Close console to quit.\n")
+                    command = input("Press 'Enter' to run linescan, or enter a command. Close console to quit.\n")
                     if command == 'gcode':
                         send_gcode(str(command))
                     if command == 'focus':
                         z_focus()
                     if command == 'filename':
-                        filename = input("Enter filename:\n")
-                        filename = str(filename)
-                    if com3 == 'ramanmode':
+                        filename = str(input("Enter filename:\n"))
+                    if command == 'ramanmode':
                         currentMode = ramanMode(currentMode)
-                    if com3 == 'imagemode':
+                    if command == 'imagemode':
                         currentMode = imageMode(currentMode)
-                    if com3 == 'adjustpower':
+                    if command == 'adjustpower':
                         currentMode = adjustPower()
                     if command == 'light':
                         while True:
@@ -359,7 +358,7 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
 
                     if command == 'focus':
                         z_focus()
-                    if com3 == '':
+                    if command == '':
                         break
                 if currentMode == 'image':
                     currentMode == ramanMode(currentMode)
