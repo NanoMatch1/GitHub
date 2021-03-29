@@ -10,6 +10,7 @@ import random
 import math
 import time
 import json
+import pickle
 
 
 sys.path.insert(0, r'C:\Users\sjbro\github\Raman\SimpleRaman package/')
@@ -206,7 +207,6 @@ def simple_load_files(fileDir, searchLen = 5):
 
 class DataSet:
 
-    processDict = {}
     scriptPath = os.path.realpath(__file__)
     mainFolder = scriptPath[:scriptPath.index('InstantRaman')+13]
     rawData = []
@@ -218,77 +218,44 @@ class DataSet:
 
     def load_fileDir(self, dataDir):
         self.rawData, self.header, self.BG = simple_load_files(dataDir)
+
+        self.meta = {'dir':dataDir, 'header':self.header}
         self.dataDir = dataDir
         self.currentData = self.rawData
+        self.processDict = {'raw':self.rawData}
 
-    def save_data_npz(self, dataDir, indexKey = 'OneDrive'):
+
+    def save_database(self):
         tagList = input('Enter tags separated by comma, or press enter to continue.\n').split(',')
+        self.meta['tags'] = tagList
 
-        print('Saving to database...')
-        outfile = '{}/masterDatabase.npz'.format(self.mainFolder)
-        np.savez(outfile, **self.processDict)
-
-        print('Save complete.')
-
-    def load_data_npz(self, dir = None):
-        if dir is None:
-            dir = self.mainFolder
-        dbfile = dir+r'/masterDatabase.npz'
-        masterDatabase = np.load(dbfile)
-        self.databaseKeys = masterDatabase.files
-        # self.processDict = {key:masterDatabase[key] for key in self.databaseKeys}
-        for key in self.databaseKeys:
-            print(key, masterDatabase[str(key)])
-
-
-    def save_data_json(self, dataDir, indexKey = 'OneDrive'):
-
-        dataSetName = dataDir[dataDir.index(indexKey):]
-
-        tagList = input('Enter tags separated by comma, or press enter to continue.\n').split(',')
+        seriesName = input('Enter name of data series:\n')
+        series = {'meta':self.meta, 'data':self.processDict} # adds metadata and processDict data into dictionary with seires name as the key
 
         print('Saving to database...')
 
-        if not 'masterDatabase.json' in os.listdir(self.mainFolder): # makes database file if not found in script directory
-            masterDatabase = {}
-            masterDatabase[dataSetName] = self.processDict
-            with open('{}/masterDatabase.json'.format(self.mainFolder),
-             'w') as jsonfile:
-                json.dump(masterDatabase, jsonfile)
-
-        with open(self.mainFolder+r'\tagDict.json') as json_file: # opens and adds to tag list file
-            tagDict = json.load(json_file)
-        tagDict[dataSetName] = tagList
-        with open('{}/tagDict.json'.format(self.mainFolder), 'w') as jsonfile:
-            json.dump(tagDict, jsonfile)
-        # except Exception as e:
-        #     print("error in loading json file")
-        #     print(e)
-        #     print('making new json file')
-        #     tagDict = {}
-        #     tagDict[dataSetName] = tagList
-        #     with open('{}/tagDict.json'.format(self.mainFolder), 'w') as jsonfile:
-        #         json.dump(tagDict, jsonfile)
-
-        # try:
-        with open(self.mainFolder+r'\masterDatabase.json') as json_file: # appends dorcessDict to main database and saves
-            masterDatabase = json.load(json_file)
-        masterDatabase[dataSetName] = self.processDict
-        with open('{}/masterDatabase.json'.format(self.mainFolder), 'w') as jsonfile:
-            json.dump(masterDatabase, jsonfile)
-        # except Exception as e:
-        #     print("error in loading json file")
-        #     print(e)
-        #     print('making new json file')
-        #     masterDatabase = {}
-        #     masterDatabase[dataSetName] = self.processDict
-        #     with open('{}/masterDatabase.json'.format(self.mainFolder), 'w') as jsonfile:
-        #         json.dump(masterDatabase, jsonfile)
-
-        with open('{}/processDatabase.json'.format(dataDir), 'w') as jsonfile:
-            json.dump(self.processDict, jsonfile)
+        try:
+            with open('masterDatabase.P', 'rb') as handle: #opens masterDatabse file
+                masterDatabase = pickle.load(handle)
+            masterDatabase[seriesName] = series #appends to data from master database
+            with open('masterDatabase.P', 'wb') as handle: # overwrites master database
+                pickle.dump(masterDatabase, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open('{}/{}_database.P'.format(self.dataDir, seriesName), 'wb') as handle: # makes separate database file in dataDir folder as a redundancy
+                pickle.dump(masterDatabase, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            print('saved')
+        except FileNotFoundError:
+            print('No database file found - try moving database file to script folder:\n{}'.format(self.mainFolder))
+            print('Making new database file...')
+            with open('masterDatabase.P', 'wb') as handle:
+                pickle.dump({seriesName:series}, handle, protocol=pickle.HIGHEST_PROTOCOL) # generates first database folder
+            print('Save complete.')
+            return
 
         print('Save complete.')
+
+    def load_database(self):
+        with open('masterDatabase.P', 'rb') as handle:
+            self.masterDatabase = pickle.load(handle)
 
     def check_BG(self, dataDir): # edit later to search for BG folder - write function to check
 
@@ -591,25 +558,44 @@ def plot_peakDict(axis, linescanList, peakDict):
 
     return axis
 
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-29-21 scans\line1/"
+fileDir = r"D:\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-29-21 scans\line1/"
 # make_dir(fileDir)
 # grab_files(r'H:\PhD\Raman\2021\3-29-21 scan/', fileDir)
 # pause()
 
 mainData = DataSet()
-mainData.load_fileDir(fileDir)
+mainData.load_database()
+print(mainData.masterDatabase.keys())
 
+
+# mainData.load_fileDir(fileDir)
+# mainData.save_database()
+
+# for key, item in mainData.masterDatabase.items():
+#     print(key)
+#     print(mainData.masterDatabase[key])
+# print('\n'*5)
+
+pause()
 # print(mainData.processDict)
 # mainData.load_data_npz()
+# print(mainData.databaseKeys)
+# print(mainData.masterDatabase['baselined'])
+
+    # for x in dataset:
+    #     print(x)
+    # # print(key, item)
+    #     pause()
+
 # print(mainData.processDict)
 # # print(mainData.header)
-# pause()
+pause()
 # mainData.check_BG(fileDir)
 # mainData.plot_current(legend = 'on', plotRange = (10, 12))
 # # pause()
 
 mainData.baseline_all(lam = 10000, p = 0.0001)
-# mainData.subtract_BG(normaliseRange = (10, 80, 10, 90), showGraph = True)
+# mainData.subtract_BG(normaliseRange = (10, 80, 10, 90), showGraph = False)
 mainData.data_absolute()
 
 # mainData.plot_BG()
