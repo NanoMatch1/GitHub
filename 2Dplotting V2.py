@@ -145,7 +145,7 @@ def simple_background(dataDict, headerDict, dataDir, moveFiles = False, singleBG
 #Hint: Right-click in the address bar in File Explorer and copy the address
 # os.chdir(r'2D_map_data')
 
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-10-21 Tests and Maps\Map3"
+fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-26-21 scans\CVD3"
 # fileDir = r'C:\OneDrive\OneDrive - Massey University\Sam\PhD\Data\Raman\Collabs\DaveMcMorran\09-28-20\785'
 dataDir = r'{}'.format(fileDir)
 BG_sub = True
@@ -165,12 +165,12 @@ if not os.path.exists(r'{}\data\cubed'.format(dataDir)):
     # basefile = "f1map1" # Base file name
     ext = ".csv" # Extension
     '''##################### enter array dims here'''
-    arrayDims = (51,23)
+    arrayDims = (26,25)
     flatArray = []
     posList = []
     # orderedPosList = []
     arrayOrder = []
-    filemap = r'C:\GitHub\Lightfield Automation\ScanLists\{}_list.json'.format(basefile)
+    filemap = r'C:\GitHub\Github\Lightfield Automation\ScanLists\{}_list.json'.format(basefile)
 
     with open(filemap) as json_file:
         mapDict = json.load(json_file)
@@ -455,9 +455,9 @@ Go slow! Use arrow keys to step for more control.'''
 # figure axis setup
 fig, ax = plt.subplots()
 fig.subplots_adjust(bottom=0.15)
-idx = 678
+idx = 750
 # display initial image
-im_h = ax.imshow(cube[:, :, idx], cmap='hot', interpolation='nearest', vmin = 0, vmax = 1500)
+im_h = ax.imshow(cube[:, :, idx], cmap='hot', interpolation='nearest', vmin = 0)#, vmax = 1500)
 vmax = 1000
 color_bar = plt.colorbar(im_h)
 
