@@ -327,7 +327,7 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 print("Linescan ready:")
                 print(lineScanList)
                 scanTime = len(lineScanList)*acquisitionTime
-                print("Estimated completion time: {} hours, {} minutes".format(scanTime/360,scanTime/60))
+                print("Estimated completion time: {} hours, {} minutes".format(scanTime/3600,scanTime/60))
                 print("Returning to start position.")
                 currentPos = interpret_move(currentPos, lineScanList[0])
                 move_absolute(lineScanList[0])
@@ -651,7 +651,7 @@ experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
 comPort = 'COM8'
-filename = "f18line1"
+filename = "CVD1line1"
 motorSpeed = 500
 travelTime = 2
 while True:
