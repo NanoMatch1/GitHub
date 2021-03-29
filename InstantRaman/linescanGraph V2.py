@@ -558,7 +558,7 @@ def plot_peakDict(axis, linescanList, peakDict):
 
     return axis
 
-fileDir = r"D:\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-29-21 scans\line1/"
+fileDir = r"D:\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\3-29-21 scans\line3/"
 # make_dir(fileDir)
 # grab_files(r'H:\PhD\Raman\2021\3-29-21 scan/', fileDir)
 # pause()
@@ -568,15 +568,15 @@ mainData.load_database()
 print(mainData.masterDatabase.keys())
 
 
-# mainData.load_fileDir(fileDir)
-# mainData.save_database()
+mainData.load_fileDir(fileDir)
+
 
 # for key, item in mainData.masterDatabase.items():
 #     print(key)
 #     print(mainData.masterDatabase[key])
 # print('\n'*5)
 
-pause()
+# pause()
 # print(mainData.processDict)
 # mainData.load_data_npz()
 # print(mainData.databaseKeys)
@@ -589,20 +589,21 @@ pause()
 
 # print(mainData.processDict)
 # # print(mainData.header)
-pause()
+# pause()
 # mainData.check_BG(fileDir)
 # mainData.plot_current(legend = 'on', plotRange = (10, 12))
 # # pause()
 
-mainData.baseline_all(lam = 10000, p = 0.0001)
+mainData.baseline_all(lam = 1000, p = 0.001)
 # mainData.subtract_BG(normaliseRange = (10, 80, 10, 90), showGraph = False)
 mainData.data_absolute()
 
 # mainData.plot_BG()
 # mainData.plot_current(normaliseRange = None, legend = 'on')
 linescanList, peakDict = mainData.linescan_plot(peakDict = {'LA':678, 'E2g':750, 'ZA(M)':647, 'LA-1':677, 'TA(M)':634}, normaliseRange = (650, 900))
-# mainData.save_data_json(fileDir, indexKey = 'OneDrive')
-# mainData.save_data_npz(fileDir, indexKey = 'OneDrive')
+
+mainData.save_database()
+
 pause()
 
 # dataDict, headerDict = simple_load_files(fileDir)
