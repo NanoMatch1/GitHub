@@ -210,7 +210,7 @@ def runLinescan(lineScanList, acquisitionTime):
     quit()
 
 
-def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', currentMode = "raman"):
+def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', currentMode = "raman", keepMode = False):
     acquireTime = None
 
     try:
@@ -360,8 +360,9 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                         z_focus()
                     if command == '':
                         break
-                if currentMode == 'image':
-                    currentMode == ramanMode(currentMode)
+                if keepMode == False:
+                    if currentMode == 'image':
+                        currentMode == ramanMode(currentMode)
                 return lineScanList, acquisitionTime, filename, currentPos
 
             if command == 'map':
@@ -707,6 +708,17 @@ while True:
     #     move_absolute(scanSeries[0, 0])
     #     currentPos = scanSeries[0, 0]
 
+    if scanType == 'justmove':
+        scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode, keepMode = True)
+        for idx, pos in enumerate(scanList):
+            print('Moving to {}'.format(pos))
+            move_absolute(pos)
+            currentPos = pos
+            time.sleep(acquisitionTime)
+        print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
+        move_absolute(scanList[0])
+        currentPos = scanList[0]
+
     if scanType == 'line':
 
         scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode)
@@ -719,7 +731,7 @@ while True:
 
             experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
 
-            print('setting exp params')
+            # print('setting exp params')
             print('Moving to {}'.format(pos))
             move_absolute(pos)
             currentPos = pos
