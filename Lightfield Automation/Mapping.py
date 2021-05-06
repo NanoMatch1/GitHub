@@ -34,8 +34,8 @@ from PrincetonInstruments.LightField.AddIns import CameraSettings
 #GRBL import
 # from GRBLcommands import*
 
-def pause():
-    input("Press Enter to continue...")
+def pause(text = "Press Enter to continue..."):
+    input(text)
 
 def experiment_completed(sender, event_args):
     print("...Acquisition Completed")
@@ -220,8 +220,11 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
     while True:
         command, type = get_command(commandList)
         if type == "move":
-            currentPos = interpret_move(currentPos, command)
-            move_absolute(currentPos)
+            try:
+                currentPos = interpret_move(currentPos, command)
+                move_absolute(currentPos)
+            except Exception as e:
+                print(e)
 
         if type == "command":
             if command == 'filename':
@@ -263,8 +266,11 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 while True:
                     command, type = get_command(commandList)
                     if type == 'move':
-                        currentPos = interpret_move(currentPos, command)
-                        move_absolute(currentPos)
+                        try:
+                            currentPos = interpret_move(currentPos, command)
+                            move_absolute(currentPos)
+                        except Exception as e:
+                            print(e)
                     if command == 'start':
                         lineStart = currentPos
                         print("Start position entered:", lineStart)
@@ -329,8 +335,11 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 scanTime = len(lineScanList)*acquisitionTime
                 print("Estimated completion time: {} hours, {} minutes".format(scanTime/3600,scanTime/60))
                 print("Returning to start position.")
-                currentPos = interpret_move(currentPos, lineScanList[0])
-                move_absolute(lineScanList[0])
+                try:
+                    currentPos = interpret_move(currentPos, lineScanList[0])
+                    move_absolute(lineScanList[0])
+                except Exception as e:
+                    print(e)
                 while True:
                     command = input("Press 'Enter' to run linescan, or enter a command. Close console to quit.\n")
                     if command == 'gcode':
@@ -371,8 +380,11 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 while True:
                     command, type = get_command(commandList)
                     if type == 'move':
-                        currentPos = interpret_move(currentPos, command)
-                        move_absolute(currentPos)
+                        try:
+                            currentPos = interpret_move(currentPos, command)
+                            move_absolute(currentPos)
+                        except Exception as e:
+                            print(e)
                     if command == 'filename':
                         filename = str(input("Enter filename:\n"))
                     if command == 'start':
@@ -441,13 +453,24 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 print("Returning to start position.")
                 mapHome = (xArray[0, 0], yArray[0, 0])
                 mapEndPos = (xArray[-1, -1], yArray[-1, -1])
-                currentPos = interpret_move(currentPos, mapHome)
-                move_absolute(mapHome)
+                try:
+                    currentPos = interpret_move(currentPos, mapHome)
+                    move_absolute(mapHome)
+                except Exception as e:
+                    print(e)
 
                 filename = filename+r' #{}x{}#{}s#'.format(len(xArray[0, :]), len(yArray[:, 0]), acquisitionTime)
                 print('Estimated run time: {} sec, or \n{} min, or \n{} hours'.format(runTime, runTime/60, runTime/3600))
                 while True:
                     com3 = input("Press 'Enter' to run map, or enter a command. Close console to quit.\n")
+                    if com3 == 'acq':
+                        acquisitionTime = input("Enter NEW acquisition time per frame (seconds):\n")
+                        try:
+                            float(acquisitionTime)
+                            runTime = len(xArray[:, 0])*len(xArray[0, :])*acquisitionTime
+                            print('Estimated run time: {} sec, or \n{} min, or \n{} hours'.format(runTime, runTime/60, runTime/3600))
+                        except:
+                            print("Acquisition time value not recognised. Please enter an number.")
                     if com3 == 'show':
                             move_absolute(mapHome)
                             move_absolute(mapEndPos[0], mapHome[0])
@@ -516,8 +539,11 @@ def z_focus():
         zStep = input('Enter focus step in microns. Type "done" to break loop.\n')
         try:
             float(zStep)
-            s.write(str.encode('G1 Z{}\n'.format(zStep)))
-            grbl_out = s.readline()
+            if -10 <= float(zStep) <= 10:
+                s.write(str.encode('G1 Z{}\n'.format(zStep)))
+                grbl_out = s.readline()
+            else:
+                print('Illegal step size - enter number between -10 and 10')
         except:
             if zStep == 'done':
                 s.write(str.encode('G90\n'))
@@ -651,7 +677,7 @@ acquireCompleted = AutoResetEvent(False)
 experiment.Load("Automation")
 experiment.ExperimentCompleted += experiment_completed
 
-comPort = 'COM8'
+comPort = 'COM9'
 filename = "CVD1line1"
 motorSpeed = 500
 travelTime = 2
@@ -749,9 +775,9 @@ while True:
         xArray, yArray, acquisitionTime, filename = main_loop(s, currentPos, commandDict, commandList, filename, currentMode)
 
         posDict = {}
-        for i in list(range(len(xArray[:, 0]))):
-            for j in list(range(len(xArray[0, :]))):
-                pos = (yArray[i, j], xArray[i, j])
+        for i in list(range(len(xArray[0, :]))):
+            for j in list(range(len(xArray[:, 0]))):
+                pos = (xArray[j, i], yArray[j, i])
 
                 posDict['{},{}'.format(i,j)] = '({},{})'.format(str(pos[0]), str(pos[1]))
 
@@ -791,18 +817,35 @@ while True:
             print('linebreak reset. Sleeping for 10 seconds')
             try:
                 pos = (xArray[i, j-j], yArray[i, j-j])
-                move_absolute(pos)
+                if float(pos[0]) > float(currentPos[0]):
+                    direction = '+'
+                    pos = (xArray[i, j-j]+5, yArray[i, j-j]) # takes up backlash
+                    move_absolute(pos)
+                    time.sleep(3)
+                    pos = (xArray[i, j-j], yArray[i, j-j])
+                    move_absolute(pos)
+                if float(pos[0]) < float(currentPos[0]):
+                    direction = '-'
+                    pos = (xArray[i, j-j]-5, yArray[i, j-j]) # takes up backlash
+                    move_absolute(pos)
+                    time.sleep(3)
+                    pos = (xArray[i, j-j], yArray[i, j-j])
+                    move_absolute(pos)
+                time.sleep(1)
                 currentPos = pos
                 pos = (xArray[i+1, j-j], yArray[i+1, j-j])
                 move_absolute(pos)
                 currentPos = pos
-                time.sleep(10)
+                time.sleep(2)
             except IndexError:
                 pass
         print('#'*100, '\nScan complete! Moving to starting position:', str(xArray[0, 0])+', '+str(yArray[0, 0]))
         if errors > 0:
             print('IPC error: {} times'.format(errors))
-        pos = (xArray[0, 0], yArray[0, 0])
+        pos = (xArray[0, 0]-5, yArray[0, 0]-5)
+        move_absolute(pos)
+        time.sleep(5)
+        pos = (xArray[0, 0], yArray[0, 0]) #takes up backlash
         move_absolute(pos)
         currentPos = pos
             # except:
