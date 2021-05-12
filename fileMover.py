@@ -42,12 +42,12 @@ def move_files(file, dirInitial, dirFinal, copy = None):
         shutil.move('{}/{}'.format(dirInitial, file),'{}/{}'.format(dirFinal, file)) #
 
 
-seriesName = "flaketest33"
+seriesName = "flaketest38"
 exportDir = r"C:\Users\sjbrooke\Documents\tempData\flaketest14"
 fileDir = r"H:\PhD\Raman\2021\4-27-21 CVD"+"\{}".format(seriesName)
 waitDelay = 0.01
 
 make_dir(fileDir)
 while True:
-    waitDelay = grab_files(exportDir, fileDir, seriesName, waitDelay = waitDelay, copy = True)
+    waitDelay = grab_files(exportDir, fileDir, seriesName, waitDelay = waitDelay, copy = False)
     time.sleep(1)

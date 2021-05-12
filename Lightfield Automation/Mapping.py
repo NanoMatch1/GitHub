@@ -669,13 +669,15 @@ def generate_2D_arrays(start, finish, resolution):
 
 
 # '''LightField Section'''
-auto = Automation(True, List[String]())
+LF = input('Boot LightField?')
+if not LF == 'no':
+    auto = Automation(True, List[String]())
 
-experiment = auto.LightFieldApplication.Experiment
-acquireCompleted = AutoResetEvent(False)
+    experiment = auto.LightFieldApplication.Experiment
+    acquireCompleted = AutoResetEvent(False)
 
-experiment.Load("Automation")
-experiment.ExperimentCompleted += experiment_completed
+    experiment.Load("Automation")
+    experiment.ExperimentCompleted += experiment_completed
 
 comPort = 'COM9'
 filename = "CVD1line1"
@@ -782,8 +784,8 @@ while True:
                 posDict['{},{}'.format(i,j)] = '({},{})'.format(str(pos[0]), str(pos[1]))
 
 # experiment.GetValue(ExperimentSettings.FileNameGenerationDirectory)))
-        with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
-            json.dump(posDict, jsonfile)
+        # with open('ScanLists/{}_list.json'.format(filename), 'w') as jsonfile:
+        #     json.dump(posDict, jsonfile)
 
         experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
         pause()
