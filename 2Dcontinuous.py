@@ -459,7 +459,7 @@ def continuous_2D(fileDir, baseline = False):
     print('array length: ', len(flatArrayFinal))
     fig, ax = plt.subplots()
     fig.subplots_adjust(bottom=0.15)
-    idx = 678
+    idx = 750
     # display initial image
     im_h = ax.imshow(cube[:, :, idx], cmap='hot', interpolation='nearest')#, vmax = 1500)
     vmax = 1000
@@ -579,8 +579,8 @@ def continuous_2D(fileDir, baseline = False):
 peakDict = {'LA':(673,683), 'E2g':(745, 755)}
 
         # dataX, dataY = (data[:, 0], data[:, 1])
-exportDir = r'H:\PhD\Raman\2021\4-27-21 CVD\flaketest35'
-fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\4-27-21 CVD\flaketest34"
+exportDir = r'H:\PhD\Raman\2021\4-27-21 CVD\SapAnneal3'
+fileDir = r"C:\Users\sjbro\OneDrive - Massey University\Sam\PhD\Data\Raman\2021\4-27-21 CVD\SapAnneal3"
 dataDir = fileDir
 
 
@@ -589,7 +589,9 @@ make_dir(fileDir)
 plotList = []
 acquisitionTime = 10.1
 
-# grab_files(exportDir, fileDir, copy = True)
+grab_files(exportDir, fileDir, copy = True)
+pause()
+
 continuous_2D(fileDir, baseline = False)
 
 pause('files moved')
