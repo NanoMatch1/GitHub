@@ -93,19 +93,31 @@ def send_gcode(code, delay = None):
     else:
         print('Incorrect code format: please enter gcode as a string or list of strings.')
 
-def move_absolute(pos):
+def move_absolute(currentPos, newPos):
     # send_gcode('G90')
-    if isinstance(pos, tuple):
-        xPos, yPos = pos
-        send_gcode('G1 X'+str(xPos)+' Y'+str(yPos))
+    if isinstance(newPos, tuple):
+        xPos, yPos = newPos
+        if currentPos[0] != xPos and currentPos[1] != yPos:
+            send_gcode('G1 X'+str(xPos)+' Y'+str(yPos))
         # currentPos = update_pos(currentPos, pos)
+        if currentPos[0] != xPos:
+            xPos = pos.lstrip('xX')
+            send_gcode('G1 X'+str(xPos))
+            # currentPos = update_pos_x(currentPos, pos)
+        if currentPos[1] != yPos:
+            yPos = pos.lstrip('yY')
+            send_gcode('G1 Y'+str(yPos))
+            # currentPos = update_pos_y(currentPos, pos)
     if isinstance(pos, str):
         if 'x' in pos or 'X' in pos:
             xPos = pos.lstrip('xX')
+            send_gcode('G1 X'+str(xPos))
             # currentPos = update_pos_x(currentPos, pos)
         if 'y' in pos or 'Y' in pos:
             yPos = pos.lstrip('yY')
+            send_gcode('G1 Y'+str(yPos))
             # currentPos = update_pos_y(currentPos, pos)
+    return newPos
 
 def move_relative(pos):
     send_gcode('G91')
@@ -188,17 +200,18 @@ def interpret_move(currentPos, command):
         xPos = command[xIndex+1:yIndex]
         yPos = command[yIndex+1:]
         # print("new pos: ("+xPos+',', yPos+")")
-        currentPos = update_pos(currentPos, (xPos, yPos))
+         newPos = update_pos(currentPos, (xPos, yPos))
     if xPos == True and yPos == False:
         xPos = command[xIndex+1:]
         # print("new pos: X", xPos)
-        currentPos = update_pos_x(currentPos, xPos)
+        newPos = update_pos_x(currentPos, xPos)
     if xPos == False and yPos == True:
         yPos = command[yIndex+1:]
         # print("new pos: Y", yPos)
-        currentPos = update_pos_y(currentPos, yPos)
+        newPos = update_pos_y(currentPos, yPos)
 
-    return(currentPos)
+
+    return(newPos)
 
 def runLinescan(lineScanList, acquisitionTime):
     for pos in lineScanList:
@@ -221,8 +234,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
         command, type = get_command(commandList)
         if type == "move":
             try:
-                currentPos = interpret_move(currentPos, command)
-                move_absolute(currentPos)
+                newPos = interpret_move(currentPos, command)
+                currentPos = move_absolute(currentPos, newPos)
             except Exception as e:
                 print(e)
 
@@ -267,8 +280,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                     command, type = get_command(commandList)
                     if type == 'move':
                         try:
-                            currentPos = interpret_move(currentPos, command)
-                            move_absolute(currentPos)
+                            newPos = interpret_move(currentPos, command)
+                            currentPos = move_absolute(currentPos, newPos)
                         except Exception as e:
                             print(e)
                     if command == 'start':
@@ -381,8 +394,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                     command, type = get_command(commandList)
                     if type == 'move':
                         try:
-                            currentPos = interpret_move(currentPos, command)
-                            move_absolute(currentPos)
+                            newPos = interpret_move(currentPos, command)
+                            currentPos = move_absolute(currentPos, newPos)
                         except Exception as e:
                             print(e)
                     if command == 'filename':
@@ -454,8 +467,8 @@ def main_loop(s, currentPos, commandDict, commandList, filename = 'filename', cu
                 mapHome = (xArray[0, 0], yArray[0, 0])
                 mapEndPos = (xArray[-1, -1], yArray[-1, -1])
                 try:
-                    currentPos = interpret_move(currentPos, mapHome)
-                    move_absolute(mapHome)
+                    newPos = interpret_move(currentPos, mapHome)
+                    currentPos = move_absolute(mapHome, newPos)
                 except Exception as e:
                     print(e)
 
@@ -740,12 +753,10 @@ while True:
         scanList, acquisitionTime, filename, currentPos = main_loop(s, currentPos, commandDict, commandList, filename, currentMode = currentMode, keepMode = True)
         for idx, pos in enumerate(scanList):
             print('Moving to {}'.format(pos))
-            move_absolute(pos)
-            currentPos = pos
+            currentPos = move_absolute(currentPos, pos)
             time.sleep(acquisitionTime)
         print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
-        move_absolute(scanList[0])
-        currentPos = scanList[0]
+        currentPos = move_absolute(currentPos, scanList[0])
 
     if scanType == 'line':
 
@@ -761,16 +772,14 @@ while True:
 
             # print('setting exp params')
             print('Moving to {}'.format(pos))
-            move_absolute(pos)
-            currentPos = pos
+            currentPos = move_absolute(currentPos, pos)
             print('sleeping for travel time: ', travelTime)
             time.sleep(travelTime)
             AcquireAndLock(filename)
         print('#'*100, '\nScan complete! Moving to starting position:', scanList[0])
         if errors > 0:
             print('IPC error: {} times'.format(errors))
-        move_absolute(scanList[0])
-        currentPos = scanList[0]
+        currentPos = move_absolute(currentPos, canList[0])
 
     if scanType == 'map':
             # try:
@@ -811,8 +820,7 @@ while True:
 
                 print('Moving to ({}, {})'.format(pos[0], pos[1]))
                 print('sleeping for travel time: ', travelTime)
-                move_absolute(pos)
-                currentPos = pos
+                currentPos = move_absolute(currentPos, pos)
                 time.sleep(travelTime)
                 AcquireAndLock(filename)
                 index += 1
@@ -822,22 +830,20 @@ while True:
                 if float(pos[0]) > float(currentPos[0]):
                     direction = '+'
                     pos = (xArray[i, j-j]+5, yArray[i, j-j]) # takes up backlash
-                    move_absolute(pos)
+                    currentPos = move_absolute(currentPos, pos)
                     time.sleep(3)
                     pos = (xArray[i, j-j], yArray[i, j-j])
-                    move_absolute(pos)
+                    currentPos = move_absolute(currentPos, pos)
                 if float(pos[0]) < float(currentPos[0]):
                     direction = '-'
                     pos = (xArray[i, j-j]-5, yArray[i, j-j]) # takes up backlash
-                    move_absolute(pos)
+                    currentPos = move_absolute(currentPos, pos)
                     time.sleep(3)
                     pos = (xArray[i, j-j], yArray[i, j-j])
-                    move_absolute(pos)
+                    currentPos = move_absolute(currentPos, pos)
                 time.sleep(1)
-                currentPos = pos
                 pos = (xArray[i+1, j-j], yArray[i+1, j-j])
-                move_absolute(pos)
-                currentPos = pos
+                currentPos = move_absolute(currentPos, pos)
                 time.sleep(2)
             except IndexError:
                 pass
@@ -845,11 +851,10 @@ while True:
         if errors > 0:
             print('IPC error: {} times'.format(errors))
         pos = (xArray[0, 0]-5, yArray[0, 0]-5)
-        move_absolute(pos)
+        currentPos = move_absolute(currentPos, pos)
         time.sleep(5)
         pos = (xArray[0, 0], yArray[0, 0]) #takes up backlash
-        move_absolute(pos)
-        currentPos = pos
+        currentPos = move_absolute(currentPos, pos)
             # except:
                 # continue
     # experiment.SetValue(CameraSettings.ShutterTimingExposureTime, acquisitionTime*1000)
